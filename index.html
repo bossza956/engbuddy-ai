@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EngBuddy AI - ฝึกภาษาอังกฤษส่วนตัวด้วย AI Gemini Pro</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Ambient Glowing Background Particles -->
+    <div class="ambient-glow-1"></div>
+    <div class="ambient-glow-2"></div>
+
+    <div class="app-container">
+        
+        <!-- Left Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2L2 22h20L12 2zm0 3.99L19.53 19H4.47L12 5.99zM13 16h-2v2h2v-2zm0-6h-2v4h2v-4z"/>
+                    </svg>
+                </div>
+                <span class="logo-text">EngBuddy AI</span>
+            </div>
+            
+            <nav class="nav-menu">
+                <a class="nav-item active" data-view="stories">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                    <span>เรื่องเล่าสั้น (Stories)</span>
+                </a>
+                <a class="nav-item" data-view="flashcards">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                    </svg>
+                    <span>การ์ดประโยค (Cards)</span>
+                </a>
+                <a class="nav-item" data-view="challenges">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M9 11l3 3L22 4m-2 12.01a9 9 0 11-5.74-8.87"/>
+                    </svg>
+                    <span>ฝึกแบบทดสอบ (Quiz)</span>
+                </a>
+                <a class="nav-item" data-view="chat">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                    </svg>
+                    <span>คุยกับ AI (Chat Tutor)</span>
+                </a>
+                <a class="nav-item" data-view="words">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                    <span>คลังคำศัพท์ (Vocab)</span>
+                </a>
+                <a class="nav-item" data-view="settings">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <span>ตั้งค่าระบบ (Settings)</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <!-- User Profile & Gamification Stats -->
+                <div class="user-stats-card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; margin-bottom: 0.8rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span id="user-level" style="font-weight: 700; color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem;">Lv.1 นักเดินทางฝึกหัด</span>
+                        <span id="user-streak" style="font-size: 0.85rem; font-weight: 700; color: var(--color-accent); display: flex; align-items: center; gap: 2px;">🔥 <span id="user-streak-count">0</span> วัน</span>
+                    </div>
+                    <!-- XP Progress Bar -->
+                    <div style="width: 100%; height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; position: relative;">
+                        <div id="user-xp-bar" style="width: 0%; height: 100%; background: var(--gradient-gemini); transition: width 0.4s ease;"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
+                        <span>XP: <span id="user-xp-current">0</span>/<span id="user-xp-next">100</span></span>
+                    </div>
+                </div>
+                
+                <div class="api-status-card">
+                    <div class="status-indicator">
+                        <span class="status-dot" id="status-dot"></span>
+                        <span id="status-text">ยังไม่พบ API Key</span>
+                    </div>
+                    <span style="color: var(--text-muted); font-size: 0.75rem;">Gemini Pro API</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- 1. SHORT STORIES VIEW -->
+            <section id="view-stories" class="view-section active-view">
+                <div class="section-header">
+                    <div>
+                        <h1 class="section-title">เรื่องเล่าสั้นฝึกภาษา</h1>
+                        <p class="section-desc">ให้ Gemini สร้างเรื่องสั้นน่าอ่านเพื่อฝึกเรียนรู้แกรมม่าและความหมายจากบริบทจริง</p>
+                    </div>
+                </div>
+                
+                <div class="story-creator-grid">
+                    <div class="story-sidebar">
+                        <div class="glass-card">
+                            <h3 style="margin-bottom: 1.2rem; font-family: 'Plus Jakarta Sans', sans-serif;">ตั้งค่าเรื่องเล่า</h3>
+                            
+                            <div class="form-group" style="margin-bottom: 1.2rem;">
+                                <label class="form-label">ระดับภาษาของคุณ</label>
+                                <select class="form-control" id="story-level">
+                                    <option value="Beginner">Beginner (ง่ายมาก ศัพท์พื้นฐาน)</option>
+                                    <option value="Intermediate" selected>Intermediate (ปานกลาง เป็นธรรมชาติ)</option>
+                                    <option value="Advanced">Advanced (ยาก ซับซ้อน วรรณกรรม)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1.2rem;">
+                                <label class="form-label">หัวข้อเรื่องที่อยากอ่าน</label>
+                                <input type="text" class="form-control" id="story-topic-input" placeholder="เช่น สั่งกาแฟ, ไปแคมป์ปิ้ง, เที่ยวปารีส...">
+                                <div class="quick-topics">
+                                    <span class="topic-tag selected" data-topic="A busy Coffee Shop">สั่งกาแฟ</span>
+                                    <span class="topic-tag" data-topic="A trip to Japan">เที่ยวญี่ปุ่น</span>
+                                    <span class="topic-tag" data-topic="A conversation with a cute cat">คุยกับแมว</span>
+                                    <span class="topic-tag" data-topic="An exciting Job Interview">สัมภาษณ์งาน</span>
+                                    <span class="topic-tag" data-topic="Losing my wallet at the airport">กระเป๋าหาย</span>
+                                </div>
+                            </div>
+                            
+                            <button class="btn btn-primary" id="btn-generate-story" style="width: 100%;">
+                            สร้างเรื่องเล่าด้วย AI
+                            </button>
+                        </div>
+                        
+                        <div class="glass-card" style="margin-top: 1.5rem;">
+                            <h3 style="margin-bottom: 1rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.1rem; color: #ffffff;">เรื่องเล่าที่บันทึกไว้</h3>
+                            <div id="saved-stories-list" class="saved-stories-list">
+                                <div class="empty-list-text" id="saved-stories-empty" style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1rem 0;">ยังไม่มีเรื่องเล่าถูกบันทึก</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card story-viewer-container" style="position: relative;">
+                        <!-- Loading Spinner Overlay -->
+                        <div class="loading-overlay" id="story-loading">
+                            <div class="spinner"></div>
+                            <span class="loading-text" id="story-loading-text">Gemini กำลังแต่งเรื่องสั้นให้คุณ...</span>
+                        </div>
+                        
+                        <!-- Empty State Placeholder -->
+                        <div class="empty-story-placeholder" id="story-placeholder">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                            </svg>
+                            <h3>ยังไม่มีเรื่องเล่าถูกโหลด</h3>
+                            <p>พิมพ์เรื่องที่คุณสนใจหรือคลิกหัวข้อด่วนฝั่งซ้ายมือเพื่อเริ่มฝึกภาษาอังกฤษได้เลย</p>
+                        </div>
+                        
+                        <div id="story-display" style="display: none;">
+                            <div class="story-header" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; width: 100%;">
+                                <div style="flex-grow: 1;">
+                                    <h2 class="story-title" id="display-story-title">Coffee Shop morning</h2>
+                                    <div style="display: flex; align-items: center; gap: 0.6rem; margin-top: 0.3rem;">
+                                        <span class="story-topic-badge" id="display-story-badge" style="margin: 0; display: inline-block;">Coffee Shop</span>
+                                        <div id="display-story-stars" style="display: flex; gap: 2px;"></div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-secondary btn-sm" id="btn-save-story" style="flex-shrink: 0; height: fit-content; gap: 0.4rem; padding: 0.6rem 1rem;">
+                                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="transition: transform var(--transition-fast);">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                                    </svg>
+                                    <span id="btn-save-story-text">บันทึกเรื่องนี้</span>
+                                </button>
+                            </div>
+                            <div class="story-body" id="story-sentences-container">
+                                <!-- Sentences dynamically rendered here -->
+                            </div>
+                            <div style="display: none; justify-content: flex-end; margin-top: 1.5rem; border-top: 1px solid var(--glass-border); padding-top: 1.2rem;" id="story-review-action-container">
+                                <button class="btn btn-primary" id="btn-story-mark-read" style="gap: 0.5rem; background: var(--gradient-success); box-shadow: 0 4px 15px rgba(0, 184, 255, 0.3);">
+                                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span id="btn-story-mark-read-text">🔊 ทบทวนและอ่านออกเสียงครบแล้ว (+15 XP)</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. FLASHCARDS VIEW -->
+            <section id="view-flashcards" class="view-section">
+                <div class="section-header">
+                    <div>
+                        <h1 class="section-title">การ์ดฝึกจำประโยค</h1>
+                        <p class="section-desc">ฝึกอ่านประโยคที่คุณเก็บบันทึกไว้ซ้ำๆ เพื่อฝังมันลงในความทรงจำระยะยาว</p>
+                    </div>
+                </div>
+                
+                <div class="flashcards-layout">
+                    <!-- Dropdown Filter for Stories -->
+                    <div class="glass-card" style="padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; border-color: rgba(138, 43, 226, 0.2);">
+                        <label class="form-label" style="margin-bottom: 0; white-space: nowrap; font-size: 0.9rem; font-weight: 600;">🎯 ฝึกทบทวนเฉพาะเรื่อง:</label>
+                        <select class="form-control" id="flashcard-story-filter" style="margin: 0; padding: 0.5rem 2.5rem 0.5rem 1rem; font-size: 0.9rem; width: auto; flex-grow: 1; min-width: 200px;">
+                            <option value="all">ทุกประโยคสะสม (All Sentences)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flashcard-stats">
+                        <div class="stat-item">
+                            <div class="stat-number" id="stats-total-cards">0</div>
+                            <div class="stat-label">ประโยคทั้งหมด</div>
+                        </div>
+                        <div class="stat-item" style="border-left: 1px solid var(--glass-border); border-right: 1px solid var(--glass-border); padding: 0 3rem;">
+                            <div class="stat-number" id="stats-learned-cards">0</div>
+                            <div class="stat-label">เรียนรู้แล้ว</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="stats-review-cards">0</div>
+                            <div class="stat-label">ต้องทบทวน</div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-scene">
+                        <div class="card-inner" id="flashcard-inner">
+                            <!-- Front (Thai Translation Hint) -->
+                            <div class="card-face card-front">
+                                <div class="card-badge">คำแปลภาษาไทย (Thai Hint)</div>
+                                <div class="card-content-text" id="card-front-text">ความหมายประโยคจะแสดงตรงนี้เมื่อคุณเริ่มบันทึกประโยคจริง</div>
+                                <div class="card-tip-text">💡 คลิกที่การ์ดเพื่อดูเฉลยประโยคภาษาอังกฤษ</div>
+                            </div>
+                            
+                            <!-- Back (English Sentence & Vocabulary Notes) -->
+                            <div class="card-face card-back">
+                                <div class="card-badge" style="color: var(--color-accent); border-color: rgba(255, 0, 127, 0.2);">ประโยคภาษาอังกฤษ (English Answer)</div>
+                                <div class="card-content-text" id="card-back-text">You haven't saved any sentences yet. Go to "Stories" tab to save sentences you like!</div>
+                                <div id="card-back-vocab" style="margin-top: 1rem; text-align: center;"></div>
+                                <button class="card-audio-trigger" id="btn-card-voice" title="ฟังเสียงอ่าน">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <path d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"/>
+                                    </svg>
+                                </button>
+                                <div class="card-tip-text">💡 คลิกที่การ์ดเพื่อกลับไปหน้าภาษาไทย</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-controls">
+                        <button class="card-nav-btn" id="btn-card-prev" disabled>
+                            <svg viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                            </svg>
+                        </button>
+                        
+                        <div class="card-action-group">
+                            <button class="btn btn-secondary" id="btn-card-flip">
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right: 4px;">
+                                    <path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
+                                </svg>
+                                พลิกการ์ด (Flip)
+                            </button>
+                            <button class="btn btn-primary" id="btn-card-learned" disabled>
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right: 4px;">
+                                    <path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                จำประโยคนี้ได้แล้ว (Learned)
+                            </button>
+                            <button class="btn btn-accent btn-sm" id="btn-card-remove" style="padding: 0.5rem 1rem;" disabled>
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <button class="card-nav-btn" id="btn-card-next" disabled>
+                            <svg viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. CHALLENGES / QUIZ VIEW -->
+            <section id="view-challenges" class="view-section">
+                <div class="section-header">
+                    <div>
+                        <h1 class="section-title">ฝึกจำด้วยควิซคำถาม</h1>
+                        <p class="section-desc">แบบทดสอบอัจฉริยะที่จะช่วยเช็คความเข้าใจคำศัพท์และเรียงประโยคที่คุณบันทึกไว้</p>
+                    </div>
+                </div>
+                
+                <div class="challenge-container">
+                    <!-- Dropdown Filter for Stories -->
+                    <div class="glass-card" style="padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; border-color: rgba(138, 43, 226, 0.2); width: 100%;">
+                        <label class="form-label" style="margin-bottom: 0; white-space: nowrap; font-size: 0.9rem; font-weight: 600;">🎯 เลือกควิซจากเรื่อง:</label>
+                        <select class="form-control" id="quiz-story-filter" style="margin: 0; padding: 0.5rem 2.5rem 0.5rem 1rem; font-size: 0.9rem; width: auto; flex-grow: 1; min-width: 200px;">
+                            <option value="all">ทุกประโยคสะสม (All Sentences)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="challenge-type-selector">
+                        <div class="challenge-type-card active" data-type="blank">
+                            <div class="challenge-type-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M16.88 3.549L20.45 7.12l-2.138 2.138-3.571-3.571 2.138-2.138zm-3.571 3.571L3 17.434v3.57h3.571l10.864-10.863-3.567-3.571z"/>
+                                </svg>
+                            </div>
+                            <span class="challenge-type-title">เติมคำในช่องว่าง (Fill-in-the-Blank)</span>
+                            <span class="challenge-type-desc">ฝึกดึงความจำด้วยการพิมพ์คำศัพท์ภาษาอังกฤษที่หายไปจากประโยคสะสมของคุณ</span>
+                        </div>
+                        <div class="challenge-type-card" data-type="puzzle">
+                            <div class="challenge-type-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                                </svg>
+                            </div>
+                            <span class="challenge-type-title">ต่อประโยค (Sentence Reorder)</span>
+                            <span class="challenge-type-desc">ฝึกทบทวนโครงสร้างภาษาอังกฤษโดยการกดเรียงคำศัพท์สลับตำแหน่งให้ถูกต้อง</span>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card">
+                        <div id="quiz-empty-placeholder" class="empty-story-placeholder">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                            </svg>
+                            <h3>ยังไม่มีประโยคสำหรับทำควิซ</h3>
+                            <p>คุณต้องไปบันทึกประโยคที่สนใจในหน้า "เรื่องเล่าสั้น" อย่างน้อย 1 ประโยคก่อนเริ่มทำควิซทบทวนความจำครับ</p>
+                        </div>
+                        
+                        <div id="quiz-arena" style="display: none;" class="challenge-arena">
+                            <div class="challenge-prompt">แปลภาษาไทยจากประโยค:</div>
+                            <div class="challenge-target" id="quiz-thai-hint">ประโยคภาษาไทยคำแปลจะขึ้นตรงนี้</div>
+                            
+                            <!-- Game type 1: Fill in blank container -->
+                            <div id="quiz-container-blank" class="blank-sentence-display">
+                                <!-- Example: "I want to <input type='text' class='sentence-blank-input'> coffee." -->
+                            </div>
+                            
+                            <!-- Game type 2: Word puzzle sorting container -->
+                            <div id="quiz-container-puzzle" style="display: none;">
+                                <div class="word-puzzle-slots" id="puzzle-slots-container">
+                                    <!-- Selected words drop in here -->
+                                </div>
+                                <div class="word-pool" id="puzzle-pool-container">
+                                    <!-- Scrambled words pool here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Feedbacks (Correct/Incorrect alerts) -->
+                            <div class="feedback-alert correct" id="quiz-feedback-correct">
+                                <div class="feedback-title">
+                                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                        <path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    ถูกต้องแล้ว! (Excellent!)
+                                </div>
+                                <div class="feedback-body" id="quiz-correct-body">เก่งมากครับ ประโยคที่ถูกต้องคือ: </div>
+                            </div>
+                            
+                            <div class="feedback-alert incorrect" id="quiz-feedback-incorrect">
+                                <div class="feedback-title">
+                                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                        <path d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    ใกล้เคียงแล้ว ลองดูคำตอบที่ถูกนะ! (Keep Trying!)
+                                </div>
+                                <div class="feedback-body" id="quiz-incorrect-body">คำตอบที่ถูกคือ: </div>
+                            </div>
+                            
+                            <!-- Trigger Row -->
+                            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem;">
+                                <button class="btn btn-secondary" id="btn-quiz-check">ตรวจสอบคำตอบ (Check)</button>
+                                <button class="btn btn-primary" id="btn-quiz-next" style="display: none;">ทำข้อถัดไป (Next)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. AI TUTOR CHAT VIEW -->
+            <section id="view-chat" class="view-section">
+                <div class="section-header">
+                    <div>
+                        <h1 class="section-title">คุยกับ AI Tutor</h1>
+                        <p class="section-desc">ลองแต่งประโยคคุยกับ Gemini และให้ AI ช่วยแนะนำวิธีแก้ไขหรือแนะนำวิธีการพูดให้เป็นธรรมชาติขึ้น</p>
+                    </div>
+                </div>
+                
+                <div class="chat-layout">
+                    <div class="chat-settings-panel">
+                        <div class="glass-card">
+                            <h3 style="margin-bottom: 1.2rem; font-family: 'Plus Jakarta Sans', sans-serif;">เลือกบุคลิก AI Tutor</h3>
+                            
+                            <div class="nav-menu" style="gap: 0.8rem;">
+                                <div class="persona-option selected" data-persona="friend">
+                                    <span class="persona-title">💬 Friendly Friend (เพื่อนคุยชิลๆ)</span>
+                                    <span class="persona-desc">ชวนคุยในหัวข้อทั่วไปอย่างเป็นกันเอง พร้อมคอยบอกคำที่ดูเป็นธรรมชาติมากกว่าเมื่อเราพูดผิดสไตล์</span>
+                                </div>
+                                <div class="persona-option" data-persona="coach">
+                                    <span class="persona-title">👩‍🏫 Strict Grammar Coach (ครูสุดเนี๊ยบ)</span>
+                                    <span class="persona-desc">เน้นแก้จุดผิดและสอนแกรมม่า อธิบายข้อดีข้อเสียของประโยคคุณอย่างละเอียดทีละจุด</span>
+                                </div>
+                                <div class="persona-option" data-persona="business">
+                                    <span class="persona-title">💼 Business English Mentor (โค้ชวัยทำงาน)</span>
+                                    <span class="persona-desc">เน้นปรับประโยคให้สุภาพ มีความเป็นมืออาชีพ และเหมาะสมกับบทสนทนาเชิงธุรกิจ</span>
+                                </div>
+                            </div>
+                            
+                            <button class="btn btn-secondary btn-sm" id="btn-reset-chat" style="margin-top: 1.5rem; width: 100%;">
+                                ล้างแชทสนทนาใหม่
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-arena">
+                        <!-- Message box -->
+                        <div class="chat-messages-container" id="chat-messages">
+                            <div class="chat-bubble assistant">
+                                สวัสดีครับ! ผมคือ AI English Tutor ของคุณ วันนี้อยากชวนคุยเกี่ยวกับเรื่องอะไรดีครับ? หรือลองเขียนประโยคมาให้ผมตรวจแกรมม่าและขัดเกลาคำก็ได้นะ! 😊
+                            </div>
+                        </div>
+                        
+                        <!-- Chat Form inputs -->
+                        <div class="chat-input-bar">
+                            <input type="text" class="chat-input-field" id="chat-input-msg" placeholder="พิมพ์ข้อความภาษาอังกฤษของคุณที่นี่...">
+                            <button class="btn btn-primary btn-icon-only" id="btn-send-chat" title="ส่งข้อความ">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. WORD BANK VIEW -->
+            <section id="view-words" class="view-section">
+                <div class="section-header">
+                    <div>
+                        <h1 class="section-title">คลังเก็บศัพท์ส่วนตัว</h1>
+                        <p class="section-desc">คำศัพท์สำคัญที่คุณจดบันทึกไว้ ค้นหา ทบทวนความหมาย และดูตัวอย่างประโยคได้ที่นี่</p>
+                    </div>
+                </div>
+                
+                <div class="glass-card" style="margin-bottom: 2rem; display: flex; gap: 1rem; align-items: center; padding: 1rem 1.5rem;">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="color: var(--text-muted);">
+                        <path d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                    </svg>
+                    <input type="text" id="vocab-search-input" class="form-control" placeholder="ค้นหาคำศัพท์ภาษาอังกฤษ..." style="background: none; border: none; padding: 0.2rem; flex-grow: 1;">
+                </div>
+                
+                <!-- Word Grid List -->
+                <div id="vocab-empty-placeholder" class="empty-story-placeholder glass-card">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                    </svg>
+                    <h3>คลังศัพท์ว่างเปล่า</h3>
+                    <p>ลองไปอ่านเรื่องเล่าสั้น และกดบันทึกคำศัพท์เด็ดๆ เพื่อสะสมในคลังศัพท์นี้ดูนะ</p>
+                </div>
+                
+                <div class="word-bank-grid" id="vocab-cards-container">
+                    <!-- Vocab card items dynamically rendered here -->
+                </div>
+            </section>
+
+            <!-- 6. SETTINGS VIEW -->
+            <section id="view-settings" class="view-section">
+                <div class="section-header">
+                    <div>
+                        <h1 class="section-title">ตั้งค่าการเชื่อมต่อ API</h1>
+                        <p class="section-desc">เชื่อมต่อกับระบบสมองกลอัจฉริยะ Gemini Pro เพื่อให้ระบบแปลและสร้างเรื่องราวได้</p>
+                    </div>
+                </div>
+                
+                <div class="settings-layout">
+                    <div class="glass-card" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.4rem; color: #ffffff;">เชื่อมต่อ Google AI Studio API</h2>
+                        
+                        <div class="settings-info-box">
+                            💡 **สำคัญมาก**: เพื่อให้โปรเจกต์ของคุณใช้งาน Gemini Pro ในการแปลและคิดเรื่องเล่าได้ฟรี! คุณจำเป็นต้องใช้ API Key ของตนเอง 
+                            <br>คุณสามารถขอรหัส API Key ได้ฟรีไม่มีค่าใช้จ่ายโดยสมัครด้วยบัญชี Google ที่ <a href="https://aistudio.google.com/" target="_blank">Google AI Studio</a> จากนั้นกดปุ่ม **"Get API Key"** แล้วคัดลอกมาระบุในฟิลด์ด้านล่างนี้ได้เลยครับ
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="settings-api-key">Gemini Pro API Key</label>
+                            <input type="password" id="settings-api-key" class="form-control" placeholder="ป้อนรหัส API Key เช่น AIzaSy..." style="letter-spacing: 2px;">
+                        </div>
+                        
+                        <div style="display: flex; gap: 1rem; align-items: center; justify-content: flex-end; margin-top: 1rem;">
+                            <button class="btn btn-secondary" id="btn-settings-test-api">ทดสอบการเชื่อมต่อ (Test)</button>
+                            <button class="btn btn-primary" id="btn-settings-save">บันทึกคีย์ (Save)</button>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card" style="display: flex; flex-direction: column; gap: 1.5rem; border-color: rgba(0, 242, 254, 0.15);">
+                        <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.4rem; color: #ffffff;">🔊 ตั้งค่าระบบเสียงพูดภาษาอังกฤษ</h2>
+                        
+                        <div class="form-group">
+                            <label class="form-label">เลือกเสียงผู้พูด (English Voices)</label>
+                            <select class="form-control" id="settings-audio-voice">
+                                <option value="">เสียงเริ่มต้นของระบบ (Default System Voice)</option>
+                            </select>
+                            <span style="color: var(--text-muted); font-size: 0.75rem;">*หมายเหตุ: หากคุณใช้เบราว์เซอร์อย่าง Microsoft Edge หรือ Chrome จะมีเสียงภาษาอังกฤษที่เป็นธรรมชาติฟรีให้เลือกเพิ่มเติม</span>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <label class="form-label" style="margin: 0;">ความเร็วในการพูด (Speech Rate)</label>
+                                <span id="settings-audio-speed-display" style="font-weight: 700; color: var(--color-teal); font-size: 0.95rem;">0.9x</span>
+                            </div>
+                            <input type="range" id="settings-audio-speed" min="0.5" max="1.5" step="0.1" value="0.9" style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 5px; outline: none; cursor: pointer; accent-color: var(--color-teal);">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted);">
+                                <span>ช้า (0.5x)</span>
+                                <span>ปกติ (1.0x)</span>
+                                <span>เร็ว (1.5x)</span>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 1rem; align-items: center; justify-content: flex-end; margin-top: 0.5rem;">
+                            <button class="btn btn-secondary btn-sm" id="btn-settings-test-audio">🔊 ทดสอบเสียงพูด (Test Voice)</button>
+                            <button class="btn btn-primary btn-sm" id="btn-settings-audio-save">บันทึกตั้งค่าเสียง</button>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card" style="display: flex; flex-direction: column; gap: 1.5rem; border-color: rgba(0, 245, 160, 0.15);">
+                        <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.4rem; color: #ffffff;">☁️ ระบบคลาวด์ซิงค์ข้อมูล (Firebase Cloud Sync)</h2>
+                        
+                        <div class="settings-info-box" style="background: rgba(0, 245, 160, 0.05); border-color: rgba(0, 245, 160, 0.15); color: #e0fff3;">
+                            คุณสามารถซิงค์และสำรองข้อมูลทั้งหมดในแอป (ความคืบหน้าการฝึกฝน, ประโยคสะสม, วันเช็คอินต่อเนื่อง, เลเวล, คำศัพท์) ไว้บนระบบคลาวด์เพื่อป้องกันข้อมูลสูญหาย หรือใช้เพื่อซิงค์ข้อมูลข้ามอุปกรณ์ได้ทันที
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>รหัสซิงค์โปรไฟล์ปัจจุบันของคุณ (Your Sync ID)</span>
+                                <span style="font-size: 0.75rem; color: var(--color-success); font-weight: 600;">*ห้ามแชร์รหัสนี้กับคนอื่น</span>
+                            </label>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="text" id="sync-profile-id" class="form-control" readonly style="font-family: monospace; letter-spacing: 1px; background: rgba(255,255,255,0.05); cursor: default;">
+                                <button class="btn btn-secondary btn-sm" id="btn-sync-copy" style="padding: 0.8rem 1.2rem; flex-shrink: 0; display: flex; align-items: center; gap: 0.3rem;">
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5A3.375 3.375 0 006.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0015 2.25h-1.5a2.251 2.251 0 00-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 00-9-9z"/>
+                                    </svg>
+                                    คัดลอก (Copy)
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 0.5rem; border-top: 1px solid var(--glass-border); padding-top: 1.2rem;">
+                            <label class="form-label" for="sync-load-id">ดึงข้อมูลโปรไฟล์จากอุปกรณ์อื่น (Load profile from Sync ID)</label>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="text" id="sync-load-id" class="form-control" placeholder="ป้อนรหัส Sync ID เช่น eb_user_..." style="font-family: monospace;">
+                                <button class="btn btn-secondary btn-sm" id="btn-sync-load" style="padding: 0.8rem 1.2rem; flex-shrink: 0; background: rgba(0, 245, 160, 0.15); border-color: rgba(0, 245, 160, 0.25); color: var(--color-success);">
+                                    โหลดและซิงค์ข้อมูล
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card" style="display: flex; flex-direction: column; gap: 1.2rem; border-color: rgba(255, 0, 127, 0.15);">
+                        <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; color: var(--color-accent);">โซนอันตราย (Danger Zone)</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">การกระทำด้านล่างนี้จะทำการลบข้อมูลทั้งหมดที่บันทึกไว้ในเบราว์เซอร์นี้ รวมถึงประโยคที่คุณบันทึก คลังศัพท์ และคีย์ API ทั้งหมดโดยถาวร</p>
+                        <div>
+                            <button class="btn btn-accent btn-sm" id="btn-reset-app">รีเซ็ตแอปพลิเคชันและข้อมูลทั้งหมด</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+        </main>
+    </div>
+
+    <!-- Toast Popup Notifications -->
+    <div class="toast-msg" id="toast-notification">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" id="toast-icon">
+            <!-- Icon changed dynamically -->
+        </svg>
+        <span id="toast-text">ข้อความแจ้งเตือน</span>
+    </div>
+
+    <!-- Firebase SDK Compat version for Vanilla JS -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
