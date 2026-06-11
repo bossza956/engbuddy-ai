@@ -2061,6 +2061,7 @@ async function loadDataFromFirebase(targetUserId) {
         localStorage.setItem('engbuddy_user_id', state.userId);
         
         // บันทึกลง LocalStorage
+        localStorage.setItem('engbuddy_api_key', state.apiKey); // บันทึกคีย์ API ที่ดึงมาจากคลาวด์
         localStorage.setItem('engbuddy_sentences', JSON.stringify(state.savedSentences));
         localStorage.setItem('engbuddy_learned', JSON.stringify(state.learnedSentences));
         localStorage.setItem('engbuddy_vocab', JSON.stringify(state.vocabBank));
@@ -2074,6 +2075,8 @@ async function loadDataFromFirebase(targetUserId) {
         
         // อัปเดต UI ทุกหน้า
         document.getElementById('settings-api-key').value = state.apiKey;
+        updateApiStatusDisplay(); // อัปเดตจุดสถานะสีเขียวในแถบเมนูข้างซ้าย
+        
         const syncInput = document.getElementById('sync-profile-id');
         if (syncInput) {
             syncInput.value = state.userId;
