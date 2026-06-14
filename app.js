@@ -295,6 +295,9 @@ function switchView(viewId) {
 
 // แสดงหน้าต่างแจ้งเตือนเล็กๆ (Toast Notification)
 function showToast(message, type = 'success') {
+    console.log(`[Toast ${type}]: ${message}`);
+    // ปิดการแสดงผลป๊อปอัปแจ้งเตือนตามความต้องการของผู้ใช้เพื่อไม่ให้เกะกะหน้าจอ
+    /*
     const toast = document.getElementById('toast-notification');
     const text = document.getElementById('toast-text');
     const icon = document.getElementById('toast-icon');
@@ -318,6 +321,7 @@ function showToast(message, type = 'success') {
     setTimeout(() => {
         toast.classList.remove('show');
     }, 4000);
+    */
 }
 
 // ==========================================================================
