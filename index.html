@@ -679,6 +679,31 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Manual Backup & Restore Section -->
+                    <div class="glass-card" style="display: flex; flex-direction: column; gap: 1.5rem; border-color: rgba(138, 43, 226, 0.15); margin-top: 1.5rem;">
+                        <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.4rem; color: #ffffff;">💾 สำรองและกู้คืนข้อมูลด้วยตนเอง (Manual Backup & Restore)</h2>
+                        <div class="settings-info-box" style="background: rgba(138, 43, 226, 0.05); border-color: rgba(138, 43, 226, 0.15); color: #f3e8ff;">
+                            หากระบบคลาวด์ติดปัญหาระบบความปลอดภัยของเบราว์เซอร์สำหรับไฟล์ในเครื่อง คุณสามารถคัดลอกข้อความรหัสสำรองด้านล่างไปวางบนหน้าเว็บออนไลน์เพื่อย้ายข้อมูลได้โดยตรงครับ
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">รหัสข้อความสำรองข้อมูลของคุณ (Backup Data String)</label>
+                            <textarea id="sync-manual-data" class="form-control" rows="3" readonly style="font-family: monospace; font-size: 0.75rem; background: rgba(255,255,255,0.03); cursor: text; resize: vertical; word-break: break-all;" placeholder="กดปุ่มสร้างเพื่อรับข้อความสำรองข้อมูล"></textarea>
+                            <div style="display: flex; gap: 0.5rem; margin-top: 0.8rem; justify-content: flex-end;">
+                                <button class="btn btn-secondary btn-sm" id="btn-manual-generate">สร้างข้อความสำรอง (Generate)</button>
+                                <button class="btn btn-secondary btn-sm" id="btn-manual-copy" disabled>คัดลอก (Copy)</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 0.5rem; border-top: 1px solid var(--glass-border); padding-top: 1.2rem;">
+                            <label class="form-label" for="sync-manual-import">นำเข้าข้อความสำรอง (Restore from Backup String)</label>
+                            <textarea id="sync-manual-import" class="form-control" rows="3" style="font-family: monospace; font-size: 0.75rem; resize: vertical;" placeholder="วางรหัสข้อความสำรองข้อมูลที่คัดลอกมาที่นี่..."></textarea>
+                            <div style="display: flex; margin-top: 0.8rem; justify-content: flex-end;">
+                                <button class="btn btn-secondary btn-sm" id="btn-manual-restore" style="background: rgba(0, 245, 160, 0.15); border-color: rgba(0, 245, 160, 0.25); color: var(--color-success);">กู้คืนข้อมูล (Restore)</button>
+                            </div>
+                        </div>
+                    </div>
                     
                     <div class="glass-card" style="display: flex; flex-direction: column; gap: 1.2rem; border-color: rgba(255, 0, 127, 0.15);">
                         <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; color: var(--color-accent);">โซนอันตราย (Danger Zone)</h3>

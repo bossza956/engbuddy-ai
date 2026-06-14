@@ -126,6 +126,13 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('ยินดีต้อนรับสู่ EngBuddy AI! กรุณาระบุ Gemini API Key ในหน้าตั้งค่าก่อนใช้งานนะครับ', 'warning');
         switchView('settings');
     }
+    
+    // อัปโหลดข้อมูลไป Firebase อัตโนมัติในฐานะการสำรองข้อมูลเริ่มแรก (หลังโหลด 3 วินาที)
+    setTimeout(() => {
+        if (firebaseEnabled && db && state.userId) {
+            saveDataToFirebase();
+        }
+    }, 3000);
 });
 
 // โหลดข้อมูลที่บันทึกไว้ในเครื่องคอมพิวเตอร์ของผู้ใช้
@@ -2572,6 +2579,26 @@ function setupEventListeners() {
         }
     });
     
+    // ระบบสำรองและกู้คืนข้อมูลด้วยตนเอง (Manual Sync)
+    document.getElementById('btn-manual-generate').addEventListener('click', generateManualBackupString);
+    document.getElementById('btn-manual-copy').addEventListener('click', () => {
+        const manualText = document.getElementById('sync-manual-data');
+        if (manualText && manualText.value) {
+            manualText.select();
+            navigator.clipboard.writeText(manualText.value).then(() => {
+                showToast("คัดลอกข้อความรหัสสำรองลงคลิปบอร์ดแล้ว!", "success");
+            }).catch(err => {
+                console.error("Failed to copy text:", err);
+                showToast("ไม่สามารถคัดลอกข้อความสำรองได้โดยอัตโนมัติ", "warning");
+            });
+        }
+    });
+    document.getElementById('btn-manual-restore').addEventListener('click', () => {
+        if (confirm("⚠️ คำเตือน: การกู้คืนข้อมูลนี้จะเขียนข้อมูลทับข้อมูลปัจจุบันของคุณในเครื่องนี้ทั้งหมด! คุณแน่ใจว่าต้องการกู้คืนข้อมูลหรือไม่?")) {
+            restoreManualBackupString();
+        }
+    });
+    
     // ตั้งค่าความเร็วเสียงและโทน
     const speedSlider = document.getElementById('settings-audio-speed');
     if (speedSlider) {
@@ -2868,5 +2895,117 @@ async function loadDataFromFirebase(targetUserId) {
         console.error("Error loading data from Firebase:", e);
         showToast("เกิดข้อผิดพลาดในการโหลดข้อมูล: " + e.message, "error");
         return false;
+    }
+}
+
+// ==========================================================================
+// 14. MANUAL BACKUP & RESTORE HELPER FUNCTIONS (ระบบสำรอง/กู้คืนแบบพิมพ์ข้อความ)
+// ==========================================================================
+function generateManualBackupString() {
+    const payload = {
+        apiKey: state.apiKey || '',
+        savedSentences: state.savedSentences || [],
+        learnedSentences: state.learnedSentences || [],
+        vocabBank: state.vocabBank || [],
+        savedStories: state.savedStories || [],
+        audioSpeed: state.audioSpeed || 0.9,
+        audioVoice: state.audioVoice || '',
+        xp: state.xp || 0,
+        level: state.level || 1,
+        streak: state.streak || 0,
+        lastActiveDate: state.lastActiveDate || '',
+        updatedAt: Date.now()
+    };
+    try {
+        const jsonStr = JSON.stringify(payload);
+        const base64 = btoa(encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+            return String.fromCharCode(parseInt(p1, 16));
+        }));
+        
+        const textarea = document.getElementById('sync-manual-data');
+        if (textarea) {
+            textarea.value = base64;
+        }
+        const copyBtn = document.getElementById('btn-manual-copy');
+        if (copyBtn) {
+            copyBtn.disabled = false;
+        }
+        showToast("สร้างข้อความสำรองข้อมูลสำเร็จแล้วครับ! 💾", "success");
+    } catch (e) {
+        console.error("Error generating backup:", e);
+        showToast("เกิดข้อผิดพลาดในการสร้างข้อมูลสำรอง", "error");
+    }
+}
+
+function restoreManualBackupString() {
+    const textarea = document.getElementById('sync-manual-import');
+    if (!textarea) return;
+    const base64 = textarea.value.trim();
+    if (!base64) {
+        showToast("กรุณาวางรหัสข้อความสำรองก่อนครับ", "warning");
+        return;
+    }
+    
+    try {
+        const jsonStr = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        
+        const data = JSON.parse(jsonStr);
+        if (!data || !data.savedSentences) {
+            throw new Error("Invalid data structure");
+        }
+        
+        state.apiKey = data.apiKey || '';
+        state.savedSentences = data.savedSentences || [];
+        state.learnedSentences = data.learnedSentences || [];
+        state.vocabBank = data.vocabBank || [];
+        state.savedStories = data.savedStories || [];
+        state.audioSpeed = parseFloat(data.audioSpeed) || 0.9;
+        state.audioVoice = data.audioVoice || '';
+        state.xp = parseInt(data.xp) || 0;
+        state.level = parseInt(data.level) || 1;
+        state.streak = parseInt(data.streak) || 0;
+        state.lastActiveDate = data.lastActiveDate || '';
+        
+        localStorage.setItem('engbuddy_api_key', state.apiKey);
+        localStorage.setItem('engbuddy_sentences', JSON.stringify(state.savedSentences));
+        localStorage.setItem('engbuddy_learned', JSON.stringify(state.learnedSentences));
+        localStorage.setItem('engbuddy_vocab', JSON.stringify(state.vocabBank));
+        localStorage.setItem('engbuddy_saved_stories', JSON.stringify(state.savedStories));
+        localStorage.setItem('engbuddy_audio_speed', state.audioSpeed);
+        localStorage.setItem('engbuddy_audio_voice', state.audioVoice);
+        localStorage.setItem('engbuddy_xp', state.xp);
+        localStorage.setItem('engbuddy_level', state.level);
+        localStorage.setItem('engbuddy_streak', state.streak);
+        localStorage.setItem('engbuddy_last_active', state.lastActiveDate);
+        
+        document.getElementById('settings-api-key').value = state.apiKey;
+        updateApiStatusDisplay();
+        
+        const speedInput = document.getElementById('settings-audio-speed');
+        if (speedInput) {
+            speedInput.value = state.audioSpeed;
+            document.getElementById('settings-audio-speed-display').textContent = state.audioSpeed + 'x';
+        }
+        
+        const voiceSelect = document.getElementById('settings-audio-voice');
+        if (voiceSelect) {
+            voiceSelect.value = state.audioVoice;
+        }
+        
+        updateUserStatsUI();
+        renderVocabBank();
+        renderSavedStoriesList();
+        renderSavedReadersList();
+        updateStoryFilters();
+        updateFlashcardStats();
+        initFlashcards();
+        
+        showToast("กู้คืนข้อมูลสำรองเสร็จสมบูรณ์แล้วครับ! 🎉", "success");
+        textarea.value = '';
+    } catch (e) {
+        console.error("Error restoring backup:", e);
+        showToast("รหัสข้อความสำรองไม่ถูกต้อง ไม่สามารถกู้คืนได้ครับ", "error");
     }
 }
