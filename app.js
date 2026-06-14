@@ -55,7 +55,8 @@ const state = {
     level: 1, // ระดับเลเวล
     streak: 0, // วันล็อกอินต่อเนื่อง
     lastActiveDate: '', // วันที่ใช้งานล่าสุด
-    userId: '', // รหัสผู้ใช้สำหรับระบบคลาวด์ซิงค์
+    userId: 'bossza956', // รหัสผู้ใช้สำหรับระบบคลาวด์ซิงค์เริ่มต้น
+    updatedAt: 0, // วันที่อัปเดตล่าสุดสำหรับการซิงค์ข้อมูล
     
     // สำหรับ Story Reader
     currentStory: null,
@@ -127,11 +128,9 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView('settings');
     }
     
-    // อัปโหลดข้อมูลไป Firebase อัตโนมัติในฐานะการสำรองข้อมูลเริ่มแรก (หลังโหลด 3 วินาที)
+    // เริ่มต้นตรวจสอบความสอดคล้องและการซิงค์ข้อมูลกับคลาวด์อัตโนมัติ (หลังโหลดหน้า 3 วินาที)
     setTimeout(() => {
-        if (firebaseEnabled && db && state.userId) {
-            saveDataToFirebase();
-        }
+        autoSyncOnStartup();
     }, 3000);
 });
 
@@ -139,12 +138,13 @@ document.addEventListener('DOMContentLoaded', () => {
 function loadDataFromLocalStorage() {
     state.apiKey = localStorage.getItem('engbuddy_api_key') || '';
     
-    // โหลดหรือสุ่มรหัสผู้ใช้งานสำหรับการซิงค์ข้อมูลคลาวด์
+    // โหลดรหัสผู้ใช้งาน (หากไม่มี หรือเป็นรหัสสุ่มดั้งเดิม eb_user_ ให้ใช้ค่าเริ่มต้นร่วมกันคือ 'bossza956')
     state.userId = localStorage.getItem('engbuddy_user_id') || '';
-    if (!state.userId) {
-        state.userId = 'eb_user_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now().toString().slice(-4);
-        localStorage.setItem('engbuddy_user_id', state.userId);
+    if (!state.userId || state.userId.startsWith('eb_user_')) {
+        state.userId = 'bossza956';
+        localStorage.setItem('engbuddy_user_id', 'bossza956');
     }
+    state.updatedAt = parseInt(localStorage.getItem('engbuddy_updated_at')) || 0;
     
     const syncInput = document.getElementById('sync-profile-id');
     if (syncInput) {
@@ -201,6 +201,9 @@ function loadDataFromLocalStorage() {
 
 // บันทึกสถานะปัจจุบันลงเครื่องคอมพิวเตอร์
 function saveDataToLocalStorage() {
+    state.updatedAt = Date.now();
+    localStorage.setItem('engbuddy_updated_at', state.updatedAt);
+    
     localStorage.setItem('engbuddy_user_id', state.userId);
     localStorage.setItem('engbuddy_sentences', JSON.stringify(state.savedSentences));
     localStorage.setItem('engbuddy_learned', JSON.stringify(state.learnedSentences));
@@ -2844,9 +2847,11 @@ async function loadDataFromFirebase(targetUserId) {
         state.level = parseInt(data.level) || 1;
         state.streak = parseInt(data.streak) || 0;
         state.lastActiveDate = data.lastActiveDate || '';
+        state.updatedAt = data.updatedAt || Date.now();
         
         // เซฟลงเครื่อง LocalStorage ทันที
         localStorage.setItem('engbuddy_user_id', state.userId);
+        localStorage.setItem('engbuddy_updated_at', state.updatedAt);
         
         // บันทึกลง LocalStorage
         localStorage.setItem('engbuddy_api_key', state.apiKey); // บันทึกคีย์ API ที่ดึงมาจากคลาวด์
@@ -3007,5 +3012,39 @@ function restoreManualBackupString() {
     } catch (e) {
         console.error("Error restoring backup:", e);
         showToast("รหัสข้อความสำรองไม่ถูกต้อง ไม่สามารถกู้คืนได้ครับ", "error");
+    }
+}
+
+async function autoSyncOnStartup() {
+    if (!firebaseEnabled || !db || !state.userId) return;
+    
+    try {
+        console.log("Checking cloud sync status for user:", state.userId);
+        const doc = await db.collection("users").doc(state.userId).get();
+        
+        if (doc.exists) {
+            const cloudData = doc.data();
+            const cloudUpdatedAt = cloudData.updatedAt || 0;
+            const localUpdatedAt = state.updatedAt || 0;
+            
+            if (cloudUpdatedAt > localUpdatedAt) {
+                console.log("Cloud data is newer. Downloading...");
+                const success = await loadDataFromFirebase(state.userId);
+                if (success) {
+                    showToast("ซิงค์ข้อมูลล่าสุดจากคลาวด์สำเร็จแล้วครับ ☁️", "success");
+                }
+            } else if (localUpdatedAt > cloudUpdatedAt) {
+                console.log("Local data is newer. Uploading...");
+                await saveDataToFirebase();
+            } else {
+                console.log("Local and cloud data are in sync.");
+            }
+        } else {
+            // Document doesn't exist on Firestore yet, upload local data to initialize it
+            console.log("Cloud profile not found. Initializing cloud document...");
+            await saveDataToFirebase();
+        }
+    } catch (e) {
+        console.error("Error during startup auto-sync:", e);
     }
 }
