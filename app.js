@@ -60,6 +60,10 @@ const state = {
     // สำหรับ Story Reader
     currentStory: null,
     
+    // สำหรับ Custom Reader
+    currentReader: null,
+    readerReadCompleted: false,
+    
     // สำหรับ Flashcards
     currentCardIndex: 0,
     isCardFlipped: false,
@@ -70,6 +74,7 @@ const state = {
     currentQuizAnswer: '', // คำตอบที่ถูกต้อง
     quizSelectedWords: [], // คำที่ผู้ใช้เลือกเรียง (สำหรับโหมดต่อคำ)
     quizOriginalWords: [], // คำดั้งเดิมของประโยค (สำหรับโหมดต่อคำ)
+    quizCompletedSentences: [], // ประโยคที่ตอบควิซถูกต้องแล้วในเซสชันปัจจุบันเพื่อไม่ให้วนซ้ำ
     
     // สำหรับ Chat
     chatPersona: 'friend', // friend, coach, business
@@ -108,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateApiStatusDisplay();
     renderVocabBank();
     renderSavedStoriesList();
+    renderSavedReadersList();
     updateStoryFilters();
     updateFlashcardStats();
     initFlashcards();
@@ -171,6 +177,19 @@ function loadDataFromLocalStorage() {
         document.getElementById('settings-audio-speed-display').textContent = state.audioSpeed + 'x';
     }
     updateUserStatsUI();
+    
+    // โหลดสถานะ Custom Reader เพิ่มเติม
+    try {
+        state.currentReader = JSON.parse(localStorage.getItem('engbuddy_current_reader')) || null;
+        state.readerReadCompleted = localStorage.getItem('engbuddy_reader_read_completed') === 'true';
+        if (state.currentReader) {
+            renderReader(state.currentReader);
+            const titleInput = document.getElementById('reader-title-input');
+            if (titleInput) titleInput.value = state.currentReader.title || '';
+        }
+    } catch(e) {
+        console.error('Error loading current reader state:', e);
+    }
 }
 
 // บันทึกสถานะปัจจุบันลงเครื่องคอมพิวเตอร์
@@ -186,6 +205,14 @@ function saveDataToLocalStorage() {
     localStorage.setItem('engbuddy_level', state.level);
     localStorage.setItem('engbuddy_streak', state.streak);
     localStorage.setItem('engbuddy_last_active', state.lastActiveDate);
+    
+    // บันทึกสถานะ Custom Reader
+    if (state.currentReader) {
+        localStorage.setItem('engbuddy_current_reader', JSON.stringify(state.currentReader));
+    } else {
+        localStorage.removeItem('engbuddy_current_reader');
+    }
+    localStorage.setItem('engbuddy_reader_read_completed', state.readerReadCompleted);
     
     // อัปโหลดข้อมูลคลาวด์ซิงค์ Firebase แบบ Asynchronous
     saveDataToFirebase();
@@ -587,8 +614,8 @@ function toggleSaveSentence(sentenceObj, buttonEl) {
             thai: sentenceObj.thai,
             vocabulary: sentenceObj.vocabulary,
             phrases: sentenceObj.phrases || [],
-            storyId: state.currentStory ? state.currentStory.id : null,
-            storyTitle: state.currentStory ? state.currentStory.title : null
+            storyId: state.currentStory ? state.currentStory.id : (state.currentReader ? state.currentReader.id : null),
+            storyTitle: state.currentStory ? state.currentStory.title : (state.currentReader ? state.currentReader.title : 'Custom Reader')
         };
         
         state.savedSentences.push(newRecord);
@@ -806,6 +833,7 @@ function toggleSaveStory() {
     
     saveDataToLocalStorage();
     renderSavedStoriesList();
+    renderSavedReadersList();
     updateStoryFilters();
     updateFlashcardStats();
     
@@ -814,18 +842,21 @@ function toggleSaveStory() {
 }
 
 // เรนเดอร์รายชื่อเรื่องเล่าที่เซฟไว้ที่ Sidebar ซ้ายของแท็บเรื่องราว
+// เรนเดอร์รายชื่อเรื่องเล่าที่เซฟไว้ที่ Sidebar ซ้ายของแท็บเรื่องราว
 function renderSavedStoriesList() {
     const container = document.getElementById('saved-stories-list');
     if (!container) return;
     
     container.innerHTML = '';
     
-    if (state.savedStories.length === 0) {
+    const storiesOnly = state.savedStories.filter(s => !s.isCustomReader);
+    
+    if (storiesOnly.length === 0) {
         container.innerHTML = `<div class="empty-list-text" id="saved-stories-empty" style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1rem 0;">ยังไม่มีเรื่องเล่าถูกบันทึก</div>`;
         return;
     }
     
-    state.savedStories.forEach(story => {
+    storiesOnly.forEach(story => {
         // คำนวณพลังความจำเสื่อมถอย 20% ต่อวัน (24 ชม.)
         const lastReviewed = story.lastReviewedDate || story.savedAt || Date.now();
         const daysElapsed = (Date.now() - lastReviewed) / (1000 * 60 * 60 * 24);
@@ -893,6 +924,7 @@ function renderSavedStoriesList() {
                 
                 saveDataToLocalStorage();
                 renderSavedStoriesList();
+                renderSavedReadersList();
                 updateStoryFilters();
                 updateFlashcardStats();
                 showToast(`ลบเรื่องเล่าเรียบร้อยแล้ว`, 'warning');
@@ -901,6 +933,548 @@ function renderSavedStoriesList() {
         
         container.appendChild(item);
     });
+}
+
+// เรนเดอร์รายชื่อข้อความฝึกฝนตัวเองที่เซฟไว้ที่ Sidebar ซ้ายของแท็บ Reader
+function renderSavedReadersList() {
+    const container = document.getElementById('saved-readers-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const readersOnly = state.savedStories.filter(s => s.isCustomReader);
+    
+    if (readersOnly.length === 0) {
+        container.innerHTML = `<div class="empty-list-text" id="saved-readers-empty" style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1rem 0;">ยังไม่มีข้อความถูกบันทึก</div>`;
+        return;
+    }
+    
+    readersOnly.forEach(reader => {
+        // คำนวณพลังความจำเสื่อมถอย 20% ต่อวัน (24 ชม.)
+        const lastReviewed = reader.lastReviewedDate || reader.savedAt || Date.now();
+        const daysElapsed = (Date.now() - lastReviewed) / (1000 * 60 * 60 * 24);
+        const memoryGauge = Math.max(0, Math.min(100, 100 - Math.floor(daysElapsed * 20)));
+        
+        let gaugeColor = 'var(--color-success)';
+        if (memoryGauge < 30) {
+            gaugeColor = 'var(--color-accent)';
+        } else if (memoryGauge < 60) {
+            gaugeColor = 'var(--color-warning)';
+        }
+        
+        let starsHtml = '';
+        const starsCount = reader.stars || 0;
+        for (let i = 1; i <= 3; i++) {
+            if (i <= starsCount) {
+                starsHtml += '<span style="color: #ffd700; font-size: 0.8rem;">★</span>';
+            } else {
+                starsHtml += '<span style="color: rgba(255, 255, 255, 0.15); font-size: 0.8rem;">★</span>';
+            }
+        }
+        
+        const item = document.createElement('div');
+        item.className = 'saved-story-item';
+        item.innerHTML = `
+            <div class="saved-story-info" style="flex-grow: 1; overflow: hidden; display: flex; flex-direction: column; gap: 0.2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.4rem;">
+                    <span class="saved-story-title-text" title="${reader.title}" style="font-weight: 600; font-size: 0.85rem; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;">${reader.title}</span>
+                    <div style="display: flex; align-items: center; gap: 1px;">${starsHtml}</div>
+                </div>
+                <span class="saved-story-meta-text" style="font-size: 0.7rem; color: var(--text-muted); display: block;">ระดับ ${reader.level || 'Beginner'} • Memory: ${memoryGauge}%</span>
+                <div class="memory-gauge-container" style="width: 100%; height: 4px; background: rgba(255, 255, 255, 0.08); border-radius: 2px; overflow: hidden; position: relative; margin-top: 1px;">
+                    <div class="memory-gauge" style="width: ${memoryGauge}%; height: 100%; background: ${gaugeColor}; transition: width 0.4s ease;"></div>
+                </div>
+            </div>
+            <button class="btn-delete-reader" title="ลบข้อความนี้" style="background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; margin-left: 6px;">
+                <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5;">
+                    <path d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        `;
+        
+        // กดที่ข้อมูลเพื่อโหลดเนื้อหา
+        item.querySelector('.saved-story-info').addEventListener('click', () => {
+            state.currentReader = reader;
+            state.readerReadCompleted = reader.readMastery || false;
+            localStorage.setItem('engbuddy_current_reader', JSON.stringify(state.currentReader));
+            localStorage.setItem('engbuddy_reader_read_completed', state.readerReadCompleted);
+            renderReader(reader);
+            
+            const titleInput = document.getElementById('reader-title-input');
+            const textInput = document.getElementById('reader-text-input');
+            if (titleInput) titleInput.value = reader.title || '';
+            if (textInput) {
+                if (reader.originalText) {
+                    textInput.value = reader.originalText;
+                } else if (reader.story_sentences) {
+                    textInput.value = reader.story_sentences.map(s => s.english).join('\n');
+                }
+            }
+        });
+        
+        // กดลบ
+        item.querySelector('.btn-delete-reader').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`คุณต้องการลบข้อความ "${reader.title}" และประโยคของข้อความนี้ใช่หรือไม่?`)) {
+                state.savedStories = state.savedStories.filter(s => s.id !== reader.id);
+                state.savedSentences = state.savedSentences.filter(s => s.storyId !== reader.id);
+                
+                if (state.currentReader && state.currentReader.id === reader.id) {
+                    state.currentReader = null;
+                    state.readerReadCompleted = false;
+                    localStorage.removeItem('engbuddy_current_reader');
+                    localStorage.setItem('engbuddy_reader_read_completed', 'false');
+                    
+                    const displaySec = document.getElementById('reader-display');
+                    const placeholder = document.getElementById('reader-placeholder');
+                    if (displaySec) displaySec.style.display = 'none';
+                    if (placeholder) placeholder.style.display = 'block';
+                }
+                
+                saveDataToLocalStorage();
+                renderSavedReadersList();
+                updateStoryFilters();
+                updateFlashcardStats();
+                showToast(`ลบข้อความเรียบร้อยแล้ว`, 'warning');
+            }
+        });
+        
+        container.appendChild(item);
+    });
+}
+
+// ==========================================================================
+// 5.5 CUSTOM READER MODULE (ระบบวิเคราะห์ข้อความและฝึกอ่านของตัวเอง)
+// ==========================================================================
+async function analyzeCustomText() {
+    const titleInput = document.getElementById('reader-title-input').value.trim();
+    const textInput = document.getElementById('reader-text-input').value.trim();
+    
+    if (!textInput) {
+        showToast('กรุณากรอกหรือวางข้อความภาษาอังกฤษก่อนวิเคราะห์นะครับ', 'warning');
+        return;
+    }
+    
+    // แสดง loading
+    const loading = document.getElementById('reader-loading');
+    const loadingText = document.getElementById('reader-loading-text');
+    if (loadingText) {
+        loadingText.textContent = 'Gemini กำลังแปลภาษาและสแกนโครงสร้างไวยากรณ์ให้คุณ...';
+    }
+    if (loading) {
+        loading.classList.add('active');
+    }
+    
+    // ตั้งชื่อเรื่องถ้าว่างอยู่
+    const title = titleInput || 'ข้อความฝึกฝนของฉัน';
+    
+    const prompt = `You are a professional, helpful English tutor. Analyze this English text:
+"${textInput}"
+
+Break down the text into individual sentences (maximum 10 sentences. If the text is very long, summarize or truncate it so that it yields at most 10 sentences for readability).
+For each sentence, perform the following tasks:
+1. "english": Provide the English sentence itself.
+2. "thai": Provide a natural, context-aware Thai translation that fits the context of the whole text.
+3. "vocabulary": List 1 to 2 key vocabulary words from that sentence. For each, include:
+   - "word": The word.
+   - "phonetic": The IPA phonetic notation (e.g., "/krɪsp/").
+   - "meaning": The Thai meaning.
+4. "phrases": List 0 to 2 key phrases, idioms, or collocations from that sentence (if any). For each, include:
+   - "phrase": The phrase.
+   - "meaning": The Thai meaning.
+
+You must reply with ONLY a JSON object that strictly adheres to the following format. Do not include markdown codeblocks (like \`\`\`json) or any preamble/postamble.
+JSON format:
+{
+  "title": "${title}",
+  "story_sentences": [
+    {
+      "english": "Sentence text...",
+      "thai": "แปลไทย...",
+      "vocabulary": [
+        { "word": "word", "phonetic": "/ipa/", "meaning": "แปลไทย" }
+      ],
+      "phrases": [
+        { "phrase": "phrase", "meaning": "แปลไทย" }
+      ]
+    }
+  ]
+}`;
+
+    const rawResponse = await callGeminiAPI(prompt, "You are a professional English teacher for Thai students.", true);
+    if (loading) {
+        loading.classList.remove('active');
+    }
+    
+    if (!rawResponse) return;
+    
+    try {
+        let cleanText = rawResponse.trim();
+        if (cleanText.startsWith('```json')) {
+            cleanText = cleanText.substring(7);
+        }
+        if (cleanText.endsWith('```')) {
+            cleanText = cleanText.substring(0, cleanText.length - 3);
+        }
+        cleanText = cleanText.trim();
+        
+        const readerData = JSON.parse(cleanText);
+        readerData.id = 'reader_' + Date.now();
+        state.currentReader = readerData;
+        state.readerReadCompleted = false;
+        
+        renderReader(readerData);
+    } catch (e) {
+        console.error('Error parsing JSON custom reader:', e, rawResponse);
+        showToast('ไม่สามารถวิเคราะห์โครงสร้างภาษาได้ กรุณาลองวิเคราะห์ใหม่อีกครั้งครับ', 'error');
+    }
+}
+
+function renderReader(readerData) {
+    const placeholder = document.getElementById('reader-placeholder');
+    const displaySec = document.getElementById('reader-display');
+    const titleEl = document.getElementById('display-reader-title');
+    
+    if (placeholder) placeholder.style.display = 'none';
+    if (displaySec) displaySec.style.display = 'block';
+    if (titleEl) titleEl.textContent = readerData.title;
+    
+    // แสดงผลดาวระดับความชำนาญ
+    const starsContainer = document.getElementById('display-reader-stars');
+    if (starsContainer) {
+        starsContainer.innerHTML = '';
+        const savedReader = state.savedStories.find(s => s.id === readerData.id);
+        const starsCount = savedReader ? (savedReader.stars || 0) : 0;
+        for (let i = 1; i <= 3; i++) {
+            if (i <= starsCount) {
+                starsContainer.innerHTML += '<span style="color: #ffd700; font-size: 1.1rem; text-shadow: 0 0 5px rgba(255,215,0,0.5);">★</span>';
+            } else {
+                starsContainer.innerHTML += '<span style="color: rgba(255,255,255,0.15); font-size: 1.1rem;">★</span>';
+            }
+        }
+        if (starsCount === 3) {
+            starsContainer.innerHTML += ' <span style="font-size: 0.75rem; color: #ffd700; font-weight: bold; text-shadow: 0 0 5px rgba(255,215,0,0.5);">Mastered 👑</span>';
+        }
+    }
+    
+    // อัปเดตสถานะปุ่มบันทึกข้อความนี้
+    const saveReaderBtn = document.getElementById('btn-save-reader');
+    const saveReaderText = document.getElementById('btn-save-reader-text');
+    if (saveReaderBtn && saveReaderText) {
+        const isReaderSaved = state.savedStories.some(s => s.id === readerData.id);
+        if (isReaderSaved) {
+            saveReaderBtn.classList.add('saved');
+            saveReaderText.textContent = 'บันทึกแล้ว';
+        } else {
+            saveReaderBtn.classList.remove('saved');
+            saveReaderText.textContent = 'บันทึกข้อความนี้';
+        }
+    }
+    
+    // อัปเดตสถานะปุ่มบันทึกทั้งหมด
+    const saveAllBtn = document.getElementById('btn-reader-save-all');
+    if (saveAllBtn && readerData.story_sentences) {
+        const allSaved = readerData.story_sentences.every(sentence => 
+            state.savedSentences.some(s => s.english.trim().toLowerCase() === sentence.english.trim().toLowerCase())
+        );
+        const btnTextSpan = saveAllBtn.querySelector('span');
+        if (allSaved) {
+            saveAllBtn.classList.add('saved');
+            if (btnTextSpan) btnTextSpan.textContent = 'บันทึกทุกประโยคแล้ว';
+            saveAllBtn.title = 'ทุกประโยคในหน้านี้ถูกบันทึกเรียบร้อยแล้ว';
+        } else {
+            saveAllBtn.classList.remove('saved');
+            if (btnTextSpan) btnTextSpan.textContent = 'บันทึกทุกประโยค (Save All)';
+            saveAllBtn.title = 'บันทึกทุกประโยคในหน้านี้เข้าคลัง';
+        }
+    }
+    
+    // แสดงปุ่มทบทวนบทเรียน
+    const reviewContainer = document.getElementById('reader-review-action-container');
+    const reviewText = document.getElementById('btn-reader-mark-read-text');
+    const savedReader = state.savedStories.find(s => s.id === readerData.id);
+    
+    if (reviewContainer && reviewText) {
+        reviewContainer.style.display = 'flex';
+        const btn = reviewContainer.querySelector('button');
+        if (btn) {
+            if (savedReader && savedReader.readMastery) {
+                btn.style.background = 'rgba(255,255,255,0.05)';
+                btn.style.borderColor = 'var(--glass-border)';
+                btn.style.boxShadow = 'none';
+                btn.disabled = true;
+                reviewText.textContent = '🔊 ทบทวนและออกเสียงข้อความนี้ครบถ้วนแล้ว';
+            } else {
+                btn.style.background = 'var(--gradient-success)';
+                btn.style.boxShadow = '0 4px 15px rgba(0, 184, 255, 0.3)';
+                btn.disabled = false;
+                reviewText.textContent = '🔊 ฝึกทบทวนและออกเสียงครบถ้วนแล้ว (+10 XP)';
+            }
+        }
+    }
+    
+    const container = document.getElementById('reader-sentences-container');
+    if (container) {
+        container.innerHTML = '';
+        
+        readerData.story_sentences.forEach((sentence, index) => {
+            const isAlreadySaved = state.savedSentences.some(s => s.english.trim().toLowerCase() === sentence.english.trim().toLowerCase());
+            
+            const sentenceBlock = document.createElement('div');
+            sentenceBlock.className = 'sentence-block';
+            sentenceBlock.innerHTML = `
+                <div class="sentence-top-row">
+                    <span class="sentence-text">${sentence.english}</span>
+                    <div class="sentence-actions">
+                        <button class="action-btn-circle btn-speak" title="ฟังเสียงอ่าน">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"/>
+                            </svg>
+                        </button>
+                        <button class="action-btn-circle btn-save-sentence ${isAlreadySaved ? 'saved' : ''}" title="${isAlreadySaved ? 'บันทึกแล้ว' : 'บันทึกประโยคนี้'}">
+                            <svg viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="sentence-details-drawer">
+                    <div class="translation-label">🇹🇭 ${sentence.thai}</div>
+                    <div class="vocab-tag-list">
+                        ${sentence.vocabulary.map(v => `<span class="vocab-tag" title="${v.meaning}">🔑 <b>${v.word}</b> ${v.phonetic} - ${v.meaning}</span>`).join('')}
+                    </div>
+                    ${sentence.phrases && sentence.phrases.length > 0 ? `
+                    <div class="vocab-tag-list" style="margin-top: 0.4rem;">
+                        ${sentence.phrases.map(p => `<span class="phrase-tag" title="${p.meaning}">💬 <b>${p.phrase}</b> - ${p.meaning}</span>`).join('')}
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            // 1. ปุ่มฟังเสียงอ่าน
+            sentenceBlock.querySelector('.btn-speak').addEventListener('click', (e) => {
+                e.stopPropagation();
+                speakText(sentence.english);
+            });
+            
+            // 2. ปุ่มเซฟประโยค
+            const saveBtn = sentenceBlock.querySelector('.btn-save-sentence');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleSaveSentence(sentence, saveBtn);
+                });
+            }
+            
+            container.appendChild(sentenceBlock);
+        });
+    }
+}
+
+function markReaderAsRead() {
+    if (state.readerReadCompleted) {
+        showToast("คุณทบทวนและสะสมคะแนนจากบทนี้ไปแล้วครับ", "warning");
+        return;
+    }
+    state.readerReadCompleted = true;
+    
+    // ให้ XP
+    addXP(10, `ทบทวนและเรียนรู้ประโยคของตัวเองสำเร็จ`);
+    
+    // ปิดปุ่ม
+    const markReadBtn = document.getElementById('btn-reader-mark-read');
+    if (markReadBtn) {
+        markReadBtn.style.background = 'rgba(255,255,255,0.05)';
+        markReadBtn.style.borderColor = 'var(--glass-border)';
+        markReadBtn.style.boxShadow = 'none';
+        markReadBtn.disabled = true;
+        const btnText = document.getElementById('btn-reader-mark-read-text');
+        if (btnText) btnText.textContent = '🔊 ทบทวนและฝึกฝนข้อความนี้ครบถ้วนแล้ว';
+    }
+    
+    if (state.currentReader) {
+        const savedReader = state.savedStories.find(s => s.id === state.currentReader.id);
+        if (savedReader) {
+            savedReader.readMastery = true;
+            savedReader.lastReviewedDate = Date.now();
+            checkAndAwardStoryStars(savedReader.id);
+        }
+    }
+}
+
+// ฟังก์ชันสลับการเซฟบทความฝึกฝนของตัวเอง
+function toggleSaveReader() {
+    if (!state.currentReader) return;
+    const reader = state.currentReader;
+    const isSaved = state.savedStories.some(s => s.id === reader.id);
+    const saveReaderBtn = document.getElementById('btn-save-reader');
+    const saveReaderText = document.getElementById('btn-save-reader-text');
+    
+    if (isSaved) {
+        // ทำการลบ
+        state.savedStories = state.savedStories.filter(s => s.id !== reader.id);
+        if (saveReaderBtn) saveReaderBtn.classList.remove('saved');
+        if (saveReaderText) saveReaderText.textContent = 'บันทึกข้อความนี้';
+        
+        // ลบประโยคทั้งหมดในเรื่องนี้ออกด้วย
+        state.savedSentences = state.savedSentences.filter(s => s.storyId !== reader.id);
+        
+        showToast('ลบข้อความและประโยคของข้อความนี้ออกจากการบันทึกแล้ว', 'warning');
+    } else {
+        // ทำการเซฟ โดยเริ่มตั้งสถานะการทบทวน (Gamification & Repetition state)
+        reader.isCustomReader = true;
+        reader.readMastery = false;
+        reader.flashcardMastery = false;
+        reader.quizMastery = false;
+        reader.stars = 0;
+        reader.quizCorrectCount = 0;
+        reader.lastReviewedDate = Date.now();
+        reader.savedAt = Date.now();
+        
+        const textInput = document.getElementById('reader-text-input');
+        if (textInput) {
+            reader.originalText = textInput.value;
+        }
+        
+        state.savedStories.push(reader);
+        if (saveReaderBtn) saveReaderBtn.classList.add('saved');
+        if (saveReaderText) saveReaderText.textContent = 'บันทึกแล้ว';
+        
+        // เซฟประโยคทั้งหมดเข้า savedSentences ทันที
+        let newlySavedCount = 0;
+        reader.story_sentences.forEach((sentence, index) => {
+            const exists = state.savedSentences.some(s => s.english.trim().toLowerCase() === sentence.english.trim().toLowerCase());
+            if (!exists) {
+                state.savedSentences.push({
+                    id: `sentence_${Date.now()}_${index}_${Math.floor(Math.random() * 1000)}`,
+                    english: sentence.english,
+                    thai: sentence.thai,
+                    vocabulary: sentence.vocabulary,
+                    phrases: sentence.phrases || [],
+                    storyId: reader.id,
+                    storyTitle: reader.title
+                });
+                newlySavedCount++;
+            } else {
+                // อัปเดตผูกมัด storyId ถ้าประโยคเคยเซฟแต่ยังไม่ได้ผูกเรื่อง
+                const existingS = state.savedSentences.find(s => s.english.trim().toLowerCase() === sentence.english.trim().toLowerCase());
+                if (existingS) {
+                    if (!existingS.storyId) {
+                        existingS.storyId = reader.id;
+                        existingS.storyTitle = reader.title;
+                    }
+                    if (!existingS.phrases && sentence.phrases) {
+                        existingS.phrases = sentence.phrases;
+                    }
+                }
+            }
+            
+            // เพิ่มคำศัพท์เข้า Word Bank
+            const vocabList = sentence.vocabulary || [];
+            vocabList.forEach(vocab => {
+                const vExists = state.vocabBank.some(v => v.word.toLowerCase() === vocab.word.toLowerCase());
+                if (!vExists) {
+                    state.vocabBank.push({
+                        word: vocab.word,
+                        phonetic: vocab.phonetic,
+                        meaning: vocab.meaning,
+                        example: sentence.english
+                    });
+                }
+            });
+        });
+        
+        showToast('บันทึกข้อความ ประโยคสะสม และศัพท์ลงระบบสำเร็จ!');
+    }
+    
+    saveDataToLocalStorage();
+    renderSavedReadersList();
+    updateStoryFilters();
+    updateFlashcardStats();
+    
+    // อัปเดตการแสดงผลของเรื่อง
+    renderReader(reader);
+}
+
+function saveAllReaderSentences() {
+    if (!state.currentReader || !state.currentReader.story_sentences) {
+        showToast("ไม่พบประโยคสำหรับบันทึก", "warning");
+        return;
+    }
+    
+    // Automatically save the reader article if it is not saved yet
+    const isReaderSaved = state.savedStories.some(s => s.id === state.currentReader.id);
+    if (!isReaderSaved) {
+        const reader = state.currentReader;
+        reader.isCustomReader = true;
+        reader.readMastery = false;
+        reader.flashcardMastery = false;
+        reader.quizMastery = false;
+        reader.stars = 0;
+        reader.quizCorrectCount = 0;
+        reader.lastReviewedDate = Date.now();
+        reader.savedAt = Date.now();
+        
+        const textInput = document.getElementById('reader-text-input');
+        if (textInput) {
+            reader.originalText = textInput.value;
+        }
+        
+        state.savedStories.push(reader);
+        
+        // Update button UI
+        const saveReaderBtn = document.getElementById('btn-save-reader');
+        const saveReaderText = document.getElementById('btn-save-reader-text');
+        if (saveReaderBtn) saveReaderBtn.classList.add('saved');
+        if (saveReaderText) saveReaderText.textContent = 'บันทึกแล้ว';
+    }
+    
+    let newlySavedCount = 0;
+    
+    state.currentReader.story_sentences.forEach(sentence => {
+        const isAlreadySaved = state.savedSentences.some(s => s.english.trim().toLowerCase() === sentence.english.trim().toLowerCase());
+        
+        if (!isAlreadySaved) {
+            const newRecord = {
+                id: `sentence_${Date.now()}_${Math.floor(Math.random() * 1000)}_${newlySavedCount}`,
+                english: sentence.english,
+                thai: sentence.thai,
+                vocabulary: sentence.vocabulary,
+                phrases: sentence.phrases || [],
+                storyId: state.currentReader.id,
+                storyTitle: state.currentReader.title
+            };
+            
+            state.savedSentences.push(newRecord);
+            newlySavedCount++;
+            
+            const vocabList = sentence.vocabulary || [];
+            vocabList.forEach(vocab => {
+                const exists = state.vocabBank.some(v => v.word.toLowerCase() === vocab.word.toLowerCase());
+                if (!exists) {
+                    state.vocabBank.push({
+                        word: vocab.word,
+                        phonetic: vocab.phonetic,
+                        meaning: vocab.meaning,
+                        example: sentence.english
+                    });
+                }
+            });
+        }
+    });
+    
+    saveDataToLocalStorage();
+    renderSavedReadersList();
+    updateStoryFilters();
+    updateFlashcardStats();
+    
+    renderReader(state.currentReader);
+    
+    if (newlySavedCount > 0) {
+        showToast(`บันทึกประโยคใหม่ ${newlySavedCount} ประโยคพร้อมบทความเข้าคลังเรียบร้อยแล้ว! 🎉`);
+    } else {
+        showToast("บันทึกบทความนี้เข้าคลังเรียบร้อยแล้วครับ", "success");
+    }
 }
 
 // อัปเดตตัวกรองเรื่องเล่าในหน้า Flashcard และ Quiz
@@ -916,34 +1490,103 @@ function updateStoryFilters() {
     flashcardFilter.innerHTML = '<option value="all">ทุกประโยคสะสม (All Sentences)</option>';
     quizFilter.innerHTML = '<option value="all">ทุกประโยคสะสม (All Sentences)</option>';
     
+    // 1. ใส่เรื่องเล่าสั้นที่เซฟไว้
     state.savedStories.forEach(story => {
         const lastReviewed = story.lastReviewedDate || story.savedAt || Date.now();
         const daysElapsed = (Date.now() - lastReviewed) / (1000 * 60 * 60 * 24);
         const memoryGauge = Math.max(0, Math.min(100, 100 - Math.floor(daysElapsed * 20)));
         const starsText = '★'.repeat(story.stars || 0) + '☆'.repeat(3 - (story.stars || 0));
+        const levelText = story.level || (story.isCustomReader ? 'Custom' : 'Beginner');
         
         const opt1 = document.createElement('option');
         opt1.value = story.id;
-        opt1.textContent = `${story.title} (${story.level}) [${starsText} • Memory: ${memoryGauge}%]`;
+        opt1.textContent = `${story.title} (${levelText}) [${starsText} • Memory: ${memoryGauge}%]`;
         flashcardFilter.appendChild(opt1);
         
         const opt2 = document.createElement('option');
         opt2.value = story.id;
-        opt2.textContent = `${story.title} (${story.level}) [${starsText} • Memory: ${memoryGauge}%]`;
+        opt2.textContent = `${story.title} (${levelText}) [${starsText} • Memory: ${memoryGauge}%]`;
+        quizFilter.appendChild(opt2);
+    });
+    
+    // 2. ค้นหาบทความ/ข้อความฝึกฝนส่วนตัว (Custom Reader) ที่เคยบันทึกประโยคไว้
+    const processedStoryIds = new Set(state.savedStories.map(s => s.id));
+    const customReadersList = [];
+    
+    state.savedSentences.forEach(s => {
+        if (s.storyId && !processedStoryIds.has(s.storyId)) {
+            processedStoryIds.add(s.storyId);
+            customReadersList.push({
+                id: s.storyId,
+                title: s.storyTitle || 'ข้อความภายนอก'
+            });
+        }
+    });
+    
+    customReadersList.forEach(reader => {
+        const opt1 = document.createElement('option');
+        opt1.value = reader.id;
+        opt1.textContent = `📝 [จากข้อความ] ${reader.title}`;
+        flashcardFilter.appendChild(opt1);
+        
+        const opt2 = document.createElement('option');
+        opt2.value = reader.id;
+        opt2.textContent = `📝 [จากข้อความ] ${reader.title}`;
         quizFilter.appendChild(opt2);
     });
     
     // คืนค่าที่เคยเลือก
-    if (state.savedStories.some(s => s.id === selectedFlashcardVal)) {
+    const isValidFlashcardVal = state.savedStories.some(s => s.id === selectedFlashcardVal) || 
+                               state.savedSentences.some(s => s.storyId === selectedFlashcardVal);
+    if (isValidFlashcardVal) {
         flashcardFilter.value = selectedFlashcardVal;
     } else {
         flashcardFilter.value = 'all';
     }
     
-    if (state.savedStories.some(s => s.id === selectedQuizVal)) {
+    const isValidQuizVal = state.savedStories.some(s => s.id === selectedQuizVal) || 
+                           state.savedSentences.some(s => s.storyId === selectedQuizVal);
+    if (isValidQuizVal) {
         quizFilter.value = selectedQuizVal;
     } else {
         quizFilter.value = 'all';
+    }
+    
+    // แสดง/ซ่อนปุ่มลบกลุ่มฟิลเตอร์
+    const btnDeleteGroup = document.getElementById('btn-delete-filter-group');
+    if (btnDeleteGroup) {
+        if (flashcardFilter.value === 'all') {
+            btnDeleteGroup.style.display = 'none';
+        } else {
+            btnDeleteGroup.style.display = 'flex';
+        }
+    }
+}
+
+function deleteFilterGroup() {
+    const filterVal = document.getElementById('flashcard-story-filter').value;
+    if (filterVal === 'all') return;
+    
+    const sentencesInGroup = state.savedSentences.filter(s => s.storyId === filterVal);
+    if (sentencesInGroup.length === 0) return;
+    
+    const groupTitle = sentencesInGroup[0].storyTitle || 'กลุ่มนี้';
+    
+    if (confirm(`คุณต้องการลบทั้ง ${sentencesInGroup.length} ประโยคในกลุ่ม "${groupTitle}" ออกจากคลังใช่หรือไม่?`)) {
+        // ลบประโยคย่อยทั้งหมด
+        state.savedSentences = state.savedSentences.filter(s => s.storyId !== filterVal);
+        
+        // ลบตัวบทความหรือเรื่องสั้นด้วย (ถ้ามีอยู่ใน savedStories)
+        state.savedStories = state.savedStories.filter(s => s.id !== filterVal);
+        
+        saveDataToLocalStorage();
+        renderSavedStoriesList();
+        renderSavedReadersList();
+        updateStoryFilters();
+        updateFlashcardStats();
+        initFlashcards();
+        
+        showToast(`ลบกลุ่มประโยคเรียบร้อยแล้ว`, 'warning');
     }
 }
 
@@ -1177,20 +1820,38 @@ function initQuiz() {
     document.getElementById('btn-quiz-next').style.display = 'none';
     document.getElementById('btn-quiz-check').style.display = 'block';
     
-    // คัดเลือกประโยคที่จะใช้ทำควิซ (เน้นข้อที่ยังไม่ได้เรียนรู้ หรือถ้าเรียนหมดแล้วก็ใช้ทั้งหมด)
+    // คัดเลือกประโยคที่จะใช้ทำควิซ
     const sentences = getFilteredQuizSentences();
-    let pool = sentences.filter(s => !state.learnedSentences.includes(s.id));
-    if (pool.length === 0) {
-        pool = sentences;
-    }
     
-    if (pool.length === 0) {
+    if (sentences.length === 0) {
         document.getElementById('quiz-empty-placeholder').style.display = 'flex';
         document.getElementById('quiz-arena').style.display = 'none';
+        if (document.getElementById('quiz-completed-arena')) {
+            document.getElementById('quiz-completed-arena').style.display = 'none';
+        }
         return;
     }
     
     document.getElementById('quiz-empty-placeholder').style.display = 'none';
+    
+    // คัดเลือกเฉพาะข้อที่ยังไม่ได้ทำถูกต้องในเซสชันนี้
+    if (!state.quizCompletedSentences) {
+        state.quizCompletedSentences = [];
+    }
+    let pool = sentences.filter(s => !state.quizCompletedSentences.includes(s.id));
+    
+    if (pool.length === 0) {
+        // ตอบถูกครบถ้วนทุกประโยคในกลุ่มแล้ว
+        document.getElementById('quiz-arena').style.display = 'none';
+        if (document.getElementById('quiz-completed-arena')) {
+            document.getElementById('quiz-completed-arena').style.display = 'flex';
+        }
+        return;
+    }
+    
+    if (document.getElementById('quiz-completed-arena')) {
+        document.getElementById('quiz-completed-arena').style.display = 'none';
+    }
     document.getElementById('quiz-arena').style.display = 'flex';
     
     // สุ่มเลือกประโยค
@@ -1221,52 +1882,87 @@ function setupBlankChallenge() {
     // แยกประโยคออกเป็นคำๆ
     const rawWords = sentence.split(/\s+/);
     
-    // พยายามหาคำที่น่าสนใจจากกลุ่มคำศัพท์ประโยค หรือสุ่มคำที่มีความยาว > 3 ตัวอักษร
-    let wordToHide = '';
-    
-    if (state.currentQuizSentence.vocabulary && state.currentQuizSentence.vocabulary.length > 0) {
-        // สุ่มคำจาก Vocab list
-        const v = state.currentQuizSentence.vocabulary[Math.floor(Math.random() * state.currentQuizSentence.vocabulary.length)];
-        wordToHide = v.word;
+    // คำที่พบบ่อยและง่ายเกินไป (ไม่ควรซ่อน)
+    const EASY_QUIZ_WORDS = new Set([
+        'a', 'an', 'the',
+        'i', 'me', 'my', 'myself', 'you', 'your', 'yours', 'yourself', 'yourselves',
+        'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself',
+        'it', 'its', 'itself', 'we', 'us', 'our', 'ours', 'ourselves',
+        'they', 'them', 'their', 'theirs', 'themselves',
+        'this', 'that', 'these', 'those', 'here', 'there',
+        'who', 'whom', 'whose', 'which', 'what', 'whose', 'whoever', 'whatever',
+        'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+        'have', 'has', 'had', 'do', 'does', 'did', 'done', 'doing',
+        'can', 'could', 'will', 'would', 'shall', 'should', 'may', 'might', 'must',
+        'in', 'on', 'at', 'to', 'for', 'with', 'by', 'of', 'about', 'as', 'from', 'into',
+        'through', 'during', 'before', 'after', 'under', 'over', 'between', 'among',
+        'out', 'up', 'down', 'off', 'over', 'under', 'again', 'further', 'then', 'once',
+        'and', 'but', 'or', 'so', 'yet', 'for', 'nor', 'because', 'although', 'if', 'unless',
+        'since', 'while', 'until', 'than', 'though'
+    ]);
+
+    const potentialCandidates = [];
+    for (let i = 0; i < rawWords.length; i++) {
+        const word = rawWords[i];
+        const cleanWord = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"");
+        const cleanLower = cleanWord.toLowerCase().trim();
+        
+        // กรองคำที่เหมาะสม: ความยาว > 2, เป็นตัวอักษรภาษาอังกฤษ, และไม่อยู่ใน EASY_QUIZ_WORDS
+        if (cleanLower.length > 2 && /^[a-zA-Z'-]+$/.test(cleanLower) && !EASY_QUIZ_WORDS.has(cleanLower)) {
+            potentialCandidates.push({ index: i, original: word, clean: cleanWord });
+        }
     }
-    
-    // ทำความสะอาดคำที่จะลบ (เอาเครื่องหมายวรรคตอนออก)
-    const cleanWordToHide = wordToHide.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"");
-    
-    // ตรวจสอบว่าคำนี้อยู่ในประโยคจริงๆ หรือไม่
+
     let targetIndex = -1;
     let foundWord = '';
-    
-    for (let i = 0; i < rawWords.length; i++) {
-        const cleanCurrent = rawWords[i].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"").toLowerCase();
-        if (cleanCurrent === cleanWordToHide.toLowerCase()) {
-            targetIndex = i;
-            foundWord = rawWords[i];
-            break;
-        }
-    }
-    
-    // ถ้าหาจาก vocab ไม่เจอ ให้หาคำทั่วไปในประโยคที่ความยาว > 3 ตัวอักษร
-    if (targetIndex === -1) {
-        const potentialCandidates = [];
+    let wordToHide = '';
+
+    if (potentialCandidates.length > 0) {
+        const chosen = potentialCandidates[Math.floor(Math.random() * potentialCandidates.length)];
+        targetIndex = chosen.index;
+        foundWord = chosen.original;
+        wordToHide = chosen.clean;
+    } else {
+        // Fallback 1: ถ้าไม่พบคำระดับปานกลาง/ยาก ลองหาคำทั่วไปที่ยาวมากกว่า 3 ตัวอักษร
+        const fallbackCandidates = [];
         for (let i = 0; i < rawWords.length; i++) {
-            const cleanWord = rawWords[i].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"");
-            if (cleanWord.length > 3) {
-                potentialCandidates.push({ index: i, original: rawWords[i], clean: cleanWord });
+            const word = rawWords[i];
+            const cleanWord = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"");
+            const cleanLower = cleanWord.toLowerCase().trim();
+            if (cleanLower.length > 3 && /^[a-zA-Z'-]+$/.test(cleanLower)) {
+                fallbackCandidates.push({ index: i, original: word, clean: cleanWord });
             }
         }
-        
-        if (potentialCandidates.length > 0) {
-            const chosen = potentialCandidates[Math.floor(Math.random() * potentialCandidates.length)];
+        if (fallbackCandidates.length > 0) {
+            const chosen = fallbackCandidates[Math.floor(Math.random() * fallbackCandidates.length)];
             targetIndex = chosen.index;
             foundWord = chosen.original;
             wordToHide = chosen.clean;
         } else {
-            // ฉุกเฉิน: เลือกคำกลางประโยค
-            const mid = Math.floor(rawWords.length / 2);
-            targetIndex = mid;
-            foundWord = rawWords[mid];
-            wordToHide = rawWords[mid].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"");
+            // Fallback 2: เลือกคำที่ยาวที่สุดในประโยค
+            let longestIndex = 0;
+            let longestWord = '';
+            let longestClean = '';
+            for (let i = 0; i < rawWords.length; i++) {
+                const word = rawWords[i];
+                const cleanWord = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"");
+                if (cleanWord.length > longestClean.length) {
+                    longestClean = cleanWord;
+                    longestWord = word;
+                    longestIndex = i;
+                }
+            }
+            if (longestClean.length > 0) {
+                targetIndex = longestIndex;
+                foundWord = longestWord;
+                wordToHide = longestClean;
+            } else {
+                // ฉุกเฉินจริงๆ: เลือกคำกลางประโยค
+                const mid = Math.floor(rawWords.length / 2);
+                targetIndex = mid;
+                foundWord = rawWords[mid];
+                wordToHide = rawWords[mid].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"");
+            }
         }
     }
     
@@ -1413,6 +2109,14 @@ function checkQuizAnswer() {
     if (isCorrect) {
         // ได้รับ XP
         addXP(5, 'ตอบควิซประโยคถูกต้อง');
+        
+        // บันทึกความสำเร็จลงในคิวของเซสชันนี้
+        if (!state.quizCompletedSentences) {
+            state.quizCompletedSentences = [];
+        }
+        if (!state.quizCompletedSentences.includes(state.currentQuizSentence.id)) {
+            state.quizCompletedSentences.push(state.currentQuizSentence.id);
+        }
         
         // เช็คความชำนาญควิซสำหรับเรื่องเล่าสั้น
         if (state.currentQuizSentence.storyId) {
@@ -1653,6 +2357,14 @@ function resetEntireApp() {
         state.audioSpeed = 0.9;
         state.audioVoice = '';
         state.chatHistory = [];
+        state.currentReader = null;
+        state.readerReadCompleted = false;
+        
+        // ซ่อนหน้าแสดงวิเคราะห์ข้อความตัวเอง
+        const displaySec = document.getElementById('reader-display');
+        const placeholder = document.getElementById('reader-placeholder');
+        if (displaySec) displaySec.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'block';
         
         document.getElementById('settings-api-key').value = '';
         const speedInput = document.getElementById('settings-audio-speed');
@@ -1667,6 +2379,7 @@ function resetEntireApp() {
         updateApiStatusDisplay();
         renderVocabBank();
         renderSavedStoriesList();
+        renderSavedReadersList();
         updateStoryFilters();
         updateFlashcardStats();
         initFlashcards();
@@ -1695,12 +2408,32 @@ function setupEventListeners() {
     }
     
     // ฟิลเตอร์เรื่องในหน้า Flashcards / Quiz
-    document.getElementById('flashcard-story-filter').addEventListener('change', () => {
-        state.currentCardIndex = 0;
-        updateFlashcardStats();
-        initFlashcards();
-    });
+    const flashcardFilter = document.getElementById('flashcard-story-filter');
+    if (flashcardFilter) {
+        flashcardFilter.addEventListener('change', () => {
+            state.currentCardIndex = 0;
+            updateFlashcardStats();
+            initFlashcards();
+            
+            // แสดง/ซ่อนปุ่มลบกลุ่มฟิลเตอร์
+            const btnDeleteGroup = document.getElementById('btn-delete-filter-group');
+            if (btnDeleteGroup) {
+                if (flashcardFilter.value === 'all') {
+                    btnDeleteGroup.style.display = 'none';
+                } else {
+                    btnDeleteGroup.style.display = 'flex';
+                }
+            }
+        });
+    }
+    
+    const btnDeleteFilterGroup = document.getElementById('btn-delete-filter-group');
+    if (btnDeleteFilterGroup) {
+        btnDeleteFilterGroup.addEventListener('click', deleteFilterGroup);
+    }
+    
     document.getElementById('quiz-story-filter').addEventListener('change', () => {
+        state.quizCompletedSentences = [];
         initQuiz();
     });
     
@@ -1752,6 +2485,10 @@ function setupEventListeners() {
     // โหมดทำควิซ
     document.getElementById('btn-quiz-check').addEventListener('click', checkQuizAnswer);
     document.getElementById('btn-quiz-next').addEventListener('click', initQuiz);
+    document.getElementById('btn-quiz-replay').addEventListener('click', () => {
+        state.quizCompletedSentences = [];
+        initQuiz();
+    });
     
     // โหมดเปลี่ยนชนิดควิซ
     const challengeTypes = document.querySelectorAll('.challenge-type-card');
@@ -1759,6 +2496,7 @@ function setupEventListeners() {
         card.addEventListener('click', () => {
             challengeTypes.forEach(c => c.classList.remove('active'));
             card.classList.add('active');
+            state.quizCompletedSentences = []; // ล้างเซสชันควิซเมื่อเปลี่ยนประเภท
             initQuiz();
         });
     });
@@ -1843,6 +2581,24 @@ function setupEventListeners() {
     }
     document.getElementById('btn-settings-audio-save').addEventListener('click', saveAudioSettings);
     document.getElementById('btn-settings-test-audio').addEventListener('click', testAudioSettings);
+    
+    // โหมดเครื่องอ่านวิเคราะห์ข้อความ (Custom Reader)
+    const btnAnalyzeText = document.getElementById('btn-analyze-text');
+    if (btnAnalyzeText) {
+        btnAnalyzeText.addEventListener('click', analyzeCustomText);
+    }
+    const btnReaderMarkRead = document.getElementById('btn-reader-mark-read');
+    if (btnReaderMarkRead) {
+        btnReaderMarkRead.addEventListener('click', markReaderAsRead);
+    }
+    const btnReaderSaveAll = document.getElementById('btn-reader-save-all');
+    if (btnReaderSaveAll) {
+        btnReaderSaveAll.addEventListener('click', saveAllReaderSentences);
+    }
+    const btnSaveReader = document.getElementById('btn-save-reader');
+    if (btnSaveReader) {
+        btnSaveReader.addEventListener('click', toggleSaveReader);
+    }
 }
 
 // ==========================================================================
@@ -1952,6 +2708,7 @@ function markStoryAsRead(storyId) {
         story.lastReviewedDate = Date.now();
         saveDataToLocalStorage();
         renderSavedStoriesList();
+        renderSavedReadersList();
         updateStoryFilters();
         showToast('ฟื้นฟูระดับพลังความจำความทรงจำของบทนี้กลับสู่ 100% แล้ว!');
         
@@ -1984,10 +2741,14 @@ function checkAndAwardStoryStars(storyId) {
     
     saveDataToLocalStorage();
     renderSavedStoriesList();
+    renderSavedReadersList();
     updateStoryFilters();
     
     if (state.currentStory && state.currentStory.id === storyId) {
         renderStory(story);
+    }
+    if (state.currentReader && state.currentReader.id === storyId) {
+        renderReader(story);
     }
 }
 
@@ -2096,6 +2857,7 @@ async function loadDataFromFirebase(targetUserId) {
         updateUserStatsUI();
         renderVocabBank();
         renderSavedStoriesList();
+        renderSavedReadersList();
         updateStoryFilters();
         updateFlashcardStats();
         initFlashcards();

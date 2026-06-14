@@ -1482,7 +1482,7 @@ select.form-control {
     color: var(--text-muted);
 }
 
-.btn-delete-story {
+.btn-delete-story, .btn-delete-reader {
     width: 28px;
     height: 28px;
     border-radius: 50%;
@@ -1497,14 +1497,14 @@ select.form-control {
     flex-shrink: 0;
 }
 
-.btn-delete-story:hover {
+.btn-delete-story:hover, .btn-delete-reader:hover {
     color: var(--color-accent);
     background: rgba(255, 0, 127, 0.12);
     border-color: rgba(255, 0, 127, 0.2);
     transform: scale(1.05);
 }
 
-.btn-delete-story svg {
+.btn-delete-story svg, .btn-delete-reader svg {
     width: 14px;
     height: 14px;
     stroke: currentColor;
@@ -1513,13 +1513,13 @@ select.form-control {
 }
 
 /* Save button styling inside header */
-#btn-save-story.saved {
+#btn-save-story.saved, #btn-save-reader.saved, #btn-reader-save-all.saved {
     background: rgba(255, 0, 127, 0.15);
     border-color: rgba(255, 0, 127, 0.3);
     color: var(--color-accent);
 }
 
-#btn-save-story.saved svg {
+#btn-save-story.saved svg, #btn-save-reader.saved svg, #btn-reader-save-all.saved svg {
     fill: currentColor;
 }
 

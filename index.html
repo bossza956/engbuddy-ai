@@ -32,6 +32,12 @@
                     </svg>
                     <span>เรื่องเล่าสั้น (Stories)</span>
                 </a>
+                <a class="nav-item" data-view="reader">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                    </svg>
+                    <span>ฝึกจากข้อความ (Reader)</span>
+                </a>
                 <a class="nav-item" data-view="flashcards">
                     <svg viewBox="0 0 24 24">
                         <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
@@ -190,6 +196,102 @@
                 </div>
             </section>
 
+            <!-- 7. CUSTOM READER VIEW -->
+            <section id="view-reader" class="view-section">
+                <div class="section-header">
+                    <div>
+                        <h1 class="section-title">ฝึกภาษาจากข้อความของตัวเอง (Reader Labs)</h1>
+                        <p class="section-desc">วางบทความ ข่าว เนื้อเพลง หรือประโยคภาษาอังกฤษที่อยากเรียนรู้ แล้วให้ AI แปลและแกะไวยากรณ์ให้ทันที</p>
+                    </div>
+                </div>
+                
+                <div class="story-creator-grid">
+                    <div class="story-sidebar">
+                        <div class="glass-card">
+                            <h3 style="margin-bottom: 1.2rem; font-family: 'Plus Jakarta Sans', sans-serif;">ป้อนข้อความภาษาอังกฤษ</h3>
+                            
+                            <div class="form-group" style="margin-bottom: 1.2rem;">
+                                <label class="form-label">หัวข้อเรื่อง (Title)</label>
+                                <input type="text" class="form-control" id="reader-title-input" placeholder="เช่น เนื้อเพลงโปรด, ข่าวด่วนวันนี้...">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1.2rem;">
+                                <label class="form-label">ข้อความภาษาอังกฤษ (English Content)</label>
+                                <textarea class="form-control" id="reader-text-input" rows="10" placeholder="วางข้อความภาษาอังกฤษที่คุณต้องการอ่านและวิเคราะห์ที่นี่..." style="resize: vertical; font-size: 0.95rem; line-height: 1.5;"></textarea>
+                            </div>
+                            
+                            <button class="btn btn-primary" id="btn-analyze-text" style="width: 100%;">
+                                🚀 วิเคราะห์เนื้อหาด้วย AI
+                            </button>
+                        </div>
+                        
+                        <div class="glass-card" style="margin-top: 1.5rem;">
+                            <h3 style="margin-bottom: 1rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.1rem; color: #ffffff;">ข้อความที่บันทึกไว้</h3>
+                            <div id="saved-readers-list" class="saved-stories-list">
+                                <div class="empty-list-text" id="saved-readers-empty" style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1rem 0;">ยังไม่มีข้อความถูกบันทึก</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card story-viewer-container" style="position: relative;">
+                        <!-- Loading Spinner Overlay -->
+                        <div class="loading-overlay" id="reader-loading">
+                            <div class="spinner"></div>
+                            <span class="loading-text" id="reader-loading-text">Gemini กำลังแปลและวิเคราะห์โครงสร้างภาษาให้คุณ...</span>
+                        </div>
+                        
+                        <!-- Empty State Placeholder -->
+                        <div class="empty-story-placeholder" id="reader-placeholder">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                            </svg>
+                            <h3>ยังไม่มีเนื้อหาถูกโหลด</h3>
+                            <p>พิมพ์หรือวางเนื้อหาภาษาอังกฤษทางซ้ายมือ จากนั้นกดปุ่มวิเคราะห์เพื่อเริ่มต้นเรียนรู้ครับ</p>
+                        </div>
+                        
+                        <!-- Display Section -->
+                        <div id="reader-display" style="display: none;">
+                            <div class="story-header" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; width: 100%;">
+                                <div style="flex-grow: 1;">
+                                    <h2 class="story-title" id="display-reader-title">หัวข้อ</h2>
+                                    <div style="display: flex; align-items: center; gap: 0.6rem; margin-top: 0.3rem;">
+                                        <span class="story-topic-badge" style="margin: 0; display: inline-block; background: var(--gradient-primary);">Custom Reader</span>
+                                        <div id="display-reader-stars" style="display: flex; gap: 2px;"></div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <button class="btn btn-secondary btn-sm" id="btn-save-reader" style="flex-shrink: 0; height: fit-content; gap: 0.4rem; padding: 0.6rem 1rem;">
+                                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="transition: transform var(--transition-fast);">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                                        </svg>
+                                        <span id="btn-save-reader-text">บันทึกข้อความนี้</span>
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm" id="btn-reader-save-all" style="flex-shrink: 0; height: fit-content; gap: 0.4rem; padding: 0.6rem 1rem;">
+                                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="transition: transform var(--transition-fast);">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                                        </svg>
+                                        <span>บันทึกทุกประโยค (Save All)</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="story-body" id="reader-sentences-container">
+                                <!-- Sentences dynamically rendered here -->
+                            </div>
+                            
+                            <div style="display: none; justify-content: flex-end; margin-top: 1.5rem; border-top: 1px solid var(--glass-border); padding-top: 1.2rem;" id="reader-review-action-container">
+                                <button class="btn btn-primary" id="btn-reader-mark-read" style="gap: 0.5rem; background: var(--gradient-success); box-shadow: 0 4px 15px rgba(0, 184, 255, 0.3);">
+                                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span id="btn-reader-mark-read-text">🔊 ฝึกทบทวนและออกเสียงครบถ้วนแล้ว (+10 XP)</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- 2. FLASHCARDS VIEW -->
             <section id="view-flashcards" class="view-section">
                 <div class="section-header">
@@ -206,6 +308,12 @@
                         <select class="form-control" id="flashcard-story-filter" style="margin: 0; padding: 0.5rem 2.5rem 0.5rem 1rem; font-size: 0.9rem; width: auto; flex-grow: 1; min-width: 200px;">
                             <option value="all">ทุกประโยคสะสม (All Sentences)</option>
                         </select>
+                        <button class="btn btn-secondary btn-sm" id="btn-delete-filter-group" style="display: none; background: rgba(255, 0, 127, 0.1); border-color: rgba(255, 0, 127, 0.2); color: var(--color-accent); font-size: 0.85rem; padding: 0.5rem 1rem; height: fit-content; gap: 0.3rem;" title="ลบทุกประโยคในกลุ่มนี้ออกจากคลัง">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="margin: 0;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span>ลบกลุ่มนี้</span>
+                        </button>
                     </div>
                     
                     <div class="flashcard-stats">
@@ -376,6 +484,18 @@
                                 <button class="btn btn-secondary" id="btn-quiz-check">ตรวจสอบคำตอบ (Check)</button>
                                 <button class="btn btn-primary" id="btn-quiz-next" style="display: none;">ทำข้อถัดไป (Next)</button>
                             </div>
+                        </div>
+
+                        <!-- Quiz Completion Screen -->
+                        <div id="quiz-completed-arena" style="display: none;" class="empty-story-placeholder">
+                            <div style="background: rgba(46, 213, 115, 0.15); border: 2px solid rgba(46, 213, 115, 0.3); border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; box-shadow: 0 8px 32px 0 rgba(46, 213, 115, 0.2);">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#2ed573" stroke-width="2.5" style="width: 40px; height: 40px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <h3 style="color: #2ed573; font-weight: 700; margin-bottom: 0.5rem; font-family: 'Plus Jakarta Sans', sans-serif;">ฝึกทบทวนครบถ้วนแล้ว! 🎉</h3>
+                            <p style="margin-bottom: 1.5rem; color: var(--text-muted); max-width: 480px; margin-left: auto; margin-right: auto; line-height: 1.6;">คุณได้ตอบควิซของทุกประโยคในกลุ่มนี้ถูกต้องเรียบร้อยแล้ว ยอดเยี่ยมมากครับ! หากต้องการทบทวนอีกครั้ง สามารถกดปุ่มด้านล่างได้เลย</p>
+                            <button class="btn btn-primary" id="btn-quiz-replay" style="margin: 0 auto; display: block;">ฝึกอีกครั้ง (Replay)</button>
                         </div>
                     </div>
                 </div>
