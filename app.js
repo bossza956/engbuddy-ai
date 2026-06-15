@@ -2789,8 +2789,31 @@ function checkAndAwardStoryStars(storyId) {
 // ==========================================================================
 // 13. FIREBASE SYNCHRONIZATION HELPER FUNCTIONS
 // ==========================================================================
+function updateSyncStatus(status, colorText = '') {
+    const badge = document.getElementById('sync-status-badge');
+    if (!badge) return;
+    
+    badge.textContent = status;
+    if (colorText === 'success') {
+        badge.style.background = 'rgba(0, 245, 160, 0.15)';
+        badge.style.color = 'var(--color-success)';
+    } else if (colorText === 'warning') {
+        badge.style.background = 'rgba(255, 123, 0, 0.15)';
+        badge.style.color = '#ffae00';
+    } else if (colorText === 'error') {
+        badge.style.background = 'rgba(255, 0, 127, 0.15)';
+        badge.style.color = 'var(--color-accent)';
+    } else {
+        badge.style.background = 'rgba(255, 255, 255, 0.1)';
+        badge.style.color = 'var(--text-muted)';
+    }
+}
+
 async function saveDataToFirebase() {
-    if (!firebaseEnabled || !db || !state.userId) return;
+    if (!firebaseEnabled || !db || !state.userId) {
+        updateSyncStatus("ไม่เปิดใช้งานคลาวด์", "warning");
+        return;
+    }
     
     try {
         const payload = {
@@ -2805,19 +2828,22 @@ async function saveDataToFirebase() {
             level: state.level || 1,
             streak: state.streak || 0,
             lastActiveDate: state.lastActiveDate || '',
-            updatedAt: Date.now()
+            updatedAt: state.updatedAt || Date.now()
         };
         
         await db.collection("users").doc(state.userId).set(payload, { merge: true });
         console.log("Firebase sync completed successfully for user:", state.userId);
+        updateSyncStatus("อัปโหลดข้อมูลสำเร็จ ☁️", "success");
     } catch (e) {
         console.error("Error saving data to Firebase:", e);
+        updateSyncStatus("เกิดข้อผิดพลาดการอัปโหลด: " + e.message, "error");
     }
 }
 
 async function loadDataFromFirebase(targetUserId) {
     if (!firebaseEnabled || !db) {
         showToast("ไม่สามารถเชื่อมต่อคลาวด์ Firebase ได้ในขณะนี้", "error");
+        updateSyncStatus("คลาวด์ออฟไลน์", "warning");
         return false;
     }
     
@@ -2829,10 +2855,12 @@ async function loadDataFromFirebase(targetUserId) {
     
     try {
         showToast("กำลังดึงข้อมูลคลาวด์ซิงค์...", "warning");
+        updateSyncStatus("กำลังดาวน์โหลด...", "normal");
         const doc = await db.collection("users").doc(cleanUserId).get();
         
         if (!doc.exists) {
             showToast("ไม่พบข้อมูลโปรไฟล์ของรหัส Sync ID นี้ในระบบคลาวด์", "error");
+            updateSyncStatus("ไม่พบโปรไฟล์บนคลาวด์", "warning");
             return false;
         }
         
@@ -2899,10 +2927,12 @@ async function loadDataFromFirebase(targetUserId) {
         initFlashcards();
         
         showToast("ซิงค์ข้อมูลคลาวด์เชื่อมโยงโปรไฟล์สำเร็จแล้ว! 🎉", "success");
+        updateSyncStatus("เชื่อมโยงและซิงค์ข้อมูลแล้ว ☁️", "success");
         return true;
     } catch (e) {
         console.error("Error loading data from Firebase:", e);
         showToast("เกิดข้อผิดพลาดในการโหลดข้อมูล: " + e.message, "error");
+        updateSyncStatus("เกิดข้อผิดพลาดคลาวด์: " + e.message, "error");
         return false;
     }
 }
@@ -3012,6 +3042,7 @@ function restoreManualBackupString() {
         initFlashcards();
         
         showToast("กู้คืนข้อมูลสำรองเสร็จสมบูรณ์แล้วครับ! 🎉", "success");
+        updateSyncStatus("กู้คืนข้อความสำรองสำเร็จ 💾", "success");
         textarea.value = '';
     } catch (e) {
         console.error("Error restoring backup:", e);
@@ -3020,8 +3051,12 @@ function restoreManualBackupString() {
 }
 
 async function autoSyncOnStartup() {
-    if (!firebaseEnabled || !db || !state.userId) return;
+    if (!firebaseEnabled || !db || !state.userId) {
+        updateSyncStatus("ไม่เปิดใช้งานคลาวด์", "warning");
+        return;
+    }
     
+    updateSyncStatus("กำลังเชื่อมต่อคลาวด์...", "normal");
     try {
         console.log("Checking cloud sync status for user:", state.userId);
         const doc = await db.collection("users").doc(state.userId).get();
@@ -3036,12 +3071,16 @@ async function autoSyncOnStartup() {
                 const success = await loadDataFromFirebase(state.userId);
                 if (success) {
                     showToast("ซิงค์ข้อมูลล่าสุดจากคลาวด์สำเร็จแล้วครับ ☁️", "success");
+                    updateSyncStatus("ตรงกัน (ดาวน์โหลดข้อมูลใหม่แล้ว)", "success");
+                } else {
+                    updateSyncStatus("ดาวน์โหลดข้อมูลคลาวด์ล้มเหลว", "error");
                 }
             } else if (localUpdatedAt > cloudUpdatedAt) {
                 console.log("Local data is newer. Uploading...");
                 await saveDataToFirebase();
             } else {
                 console.log("Local and cloud data are in sync.");
+                updateSyncStatus("ตรงกัน (ซิงค์ข้อมูลเรียบร้อย)", "success");
             }
         } else {
             // Document doesn't exist on Firestore yet, upload local data to initialize it
@@ -3050,5 +3089,6 @@ async function autoSyncOnStartup() {
         }
     } catch (e) {
         console.error("Error during startup auto-sync:", e);
+        updateSyncStatus("เกิดข้อผิดพลาด: " + e.message, "error");
     }
 }
