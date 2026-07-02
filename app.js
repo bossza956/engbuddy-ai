@@ -404,6 +404,7 @@ async function callGeminiAPI(prompt, systemInstruction = '', responseJson = fals
         return responseText;
     } catch (error) {
         console.error('Gemini API Error:', error);
+        state.lastApiError = error.message; // เก็บข้อความข้อผิดพลาดล่าสุดไว้เพื่อใช้ตรวจสอบ
         showToast(`Gemini Error: ${error.message}`, 'error');
         return null;
     }
@@ -2435,10 +2436,11 @@ async function testApiKey(showSuccessAlert = true) {
         }
         updateApiStatusDisplay();
     } else {
+        const errorDetail = state.lastApiError || 'ไม่พบข้อความตอบกลับจาก API (ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต)';
         if (isUsingProxy) {
-            alert('🔴 การเชื่อมต่อคลาวด์ล้มเหลว!\nกรุณาตรวจสอบว่ากรอก GEMINI_API_KEY ใน Cloudflare Worker ถูกต้องแล้วหรือยัง หรืออินเทอร์เน็ตมีปัญหาครับ');
+            alert(`🔴 การเชื่อมต่อคลาวด์ล้มเหลว!\n\nสาเหตุหลัก: ${errorDetail}\n\nคำแนะนำ: กรุณาตรวจสอบว่าสร้างตัวแปร GEMINI_API_KEY ในหน้า Settings -> Variables -> Environment Variables ของ Cloudflare Worker ถูกต้องแล้วหรือยัง หรืออินเทอร์เน็ตมีปัญหาครับ`);
         } else {
-            alert('🔴 การเชื่อมต่อล้มเหลว!\nAPI Key ไม่ถูกต้อง หรือมีปัญหาการสิทธิ์ใช้งาน ลองตรวจสอบใหม่อีกครั้งครับ');
+            alert(`🔴 การเชื่อมต่อล้มเหลว!\n\nสาเหตุหลัก: ${errorDetail}\n\nกรุณาตรวจสอบว่า API Key ที่กรอกถูกต้องหรือไม่ครับ`);
         }
     }
 }
