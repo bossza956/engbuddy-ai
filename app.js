@@ -108,51 +108,62 @@ const PERSONA_CONFIGS = {
 // 2. INITIALIZATION (จุดเริ่มต้นของระบบเมื่อเปิดเว็บ)
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', () => {
-    loadDataFromLocalStorage();
-    setupNavigation();
-    setupEventListeners();
-    updateApiStatusDisplay();
-    renderVocabBank();
-    renderSavedStoriesList();
-    renderSavedReadersList();
-    updateStoryFilters();
-    updateFlashcardStats();
-    initFlashcards();
-    loadSpeechVoices(); // โหลดตัวเลือกเสียงภาษาอังกฤษ
-    checkDailyStreak(); // ตรวจสอบวันใช้งานต่อเนื่อง
-    updateUserStatsUI(); // แสดงผลสถานะผู้ใช้
-    
-    // ตรวจสอบสถานะการเชื่อมต่อ API (จะทำงานผ่าน Proxy หรือ API Key ส่วนตัว)
-    if (!state.apiKey) {
-        showToast('ยินดีต้อนรับสู่ EngBuddy AI! (กำลังทำงานในโหมดเซิร์ฟเวอร์คลาวด์)', 'info');
-    } else {
-        showToast('ยินดีต้อนรับสู่ EngBuddy AI! (เชื่อมต่อผ่าน API Key ส่วนตัวของคุณ)', 'success');
+    try {
+        loadDataFromLocalStorage();
+        setupNavigation();
+        setupEventListeners();
+        updateApiStatusDisplay();
+        renderVocabBank();
+        renderSavedStoriesList();
+        renderSavedReadersList();
+        updateStoryFilters();
+        updateFlashcardStats();
+        initFlashcards();
+        loadSpeechVoices(); // โหลดตัวเลือกเสียงภาษาอังกฤษ
+        checkDailyStreak(); // ตรวจสอบวันใช้งานต่อเนื่อง
+        updateUserStatsUI(); // แสดงผลสถานะผู้ใช้
+        
+        // ตรวจสอบสถานะการเชื่อมต่อ API (จะทำงานผ่าน Proxy หรือ API Key ส่วนตัว)
+        if (!state.apiKey) {
+            showToast('ยินดีต้อนรับสู่ EngBuddy AI! (กำลังทำงานในโหมดเซิร์ฟเวอร์คลาวด์)', 'info');
+        } else {
+            showToast('ยินดีต้อนรับสู่ EngBuddy AI! (เชื่อมต่อผ่าน API Key ส่วนตัวของคุณ)', 'success');
+        }
+        
+        // เริ่มต้นตรวจสอบความสอดคล้องและการซิงค์ข้อมูลกับคลาวด์อัตโนมัติ (หลังโหลดหน้า 3 วินาที)
+        setTimeout(() => {
+            try {
+                autoSyncOnStartup();
+            } catch(e) {
+                console.error("AutoSync error on startup:", e);
+            }
+        }, 3000);
+    } catch (error) {
+        console.error("System initialization crashed:", error);
+        showToast("เกิดข้อผิดพลาดในการโหลดระบบ: " + error.message, "error");
     }
-    
-    // เริ่มต้นตรวจสอบความสอดคล้องและการซิงค์ข้อมูลกับคลาวด์อัตโนมัติ (หลังโหลดหน้า 3 วินาที)
-    setTimeout(() => {
-        autoSyncOnStartup();
-    }, 3000);
 });
 
 // โหลดข้อมูลที่บันทึกไว้ในเครื่องคอมพิวเตอร์ของผู้ใช้
 function loadDataFromLocalStorage() {
-    state.apiKey = localStorage.getItem('engbuddy_api_key') || '';
-    
-    // โหลดรหัสผู้ใช้งาน (หากไม่มี หรือเป็นรหัสสุ่มดั้งเดิม eb_user_ ให้ใช้ค่าเริ่มต้นร่วมกันคือ 'bossza956')
-    state.userId = localStorage.getItem('engbuddy_user_id') || '';
-    if (!state.userId || state.userId.startsWith('eb_user_')) {
-        state.userId = 'bossza956';
-        localStorage.setItem('engbuddy_user_id', 'bossza956');
-    }
-    state.updatedAt = parseInt(localStorage.getItem('engbuddy_updated_at')) || 0;
-    
-    const syncInput = document.getElementById('sync-profile-id');
-    if (syncInput) {
-        syncInput.value = state.userId;
-    }
-    
     try {
+        state.apiKey = localStorage.getItem('engbuddy_api_key') || '';
+        
+        // โหลดรหัสผู้ใช้งาน (หากไม่มี หรือเป็นรหัสสุ่มดั้งเดิม eb_user_ ให้ใช้ค่าเริ่มต้นร่วมกันคือ 'bossza956')
+        state.userId = localStorage.getItem('engbuddy_user_id') || '';
+        if (!state.userId || state.userId.startsWith('eb_user_')) {
+            state.userId = 'bossza956';
+            try {
+                localStorage.setItem('engbuddy_user_id', 'bossza956');
+            } catch (e) {}
+        }
+        state.updatedAt = parseInt(localStorage.getItem('engbuddy_updated_at')) || 0;
+        
+        const syncInput = document.getElementById('sync-profile-id');
+        if (syncInput) {
+            syncInput.value = state.userId;
+        }
+        
         state.savedSentences = JSON.parse(localStorage.getItem('engbuddy_sentences')) || [];
         state.learnedSentences = JSON.parse(localStorage.getItem('engbuddy_learned')) || [];
         state.vocabBank = JSON.parse(localStorage.getItem('engbuddy_vocab')) || [];
@@ -164,7 +175,9 @@ function loadDataFromLocalStorage() {
         state.streak = parseInt(localStorage.getItem('engbuddy_streak')) || 0;
         state.lastActiveDate = localStorage.getItem('engbuddy_last_active') || '';
     } catch (e) {
-        console.error('Error parsing local storage data:', e);
+        console.warn('Error reading from localStorage, using memory fallback:', e);
+        state.apiKey = '';
+        state.userId = 'bossza956';
         state.savedSentences = [];
         state.learnedSentences = [];
         state.vocabBank = [];
@@ -178,11 +191,18 @@ function loadDataFromLocalStorage() {
     }
     
     // ตั้งค่า Input ในหน้า Settings
-    document.getElementById('settings-api-key').value = state.apiKey;
+    const keyInputEl = document.getElementById('settings-api-key');
+    if (keyInputEl) {
+        keyInputEl.value = state.apiKey;
+    }
+    
     const speedInput = document.getElementById('settings-audio-speed');
     if (speedInput) {
         speedInput.value = state.audioSpeed;
-        document.getElementById('settings-audio-speed-display').textContent = state.audioSpeed + 'x';
+        const displayEl = document.getElementById('settings-audio-speed-display');
+        if (displayEl) {
+            displayEl.textContent = state.audioSpeed + 'x';
+        }
     }
     updateUserStatsUI();
     
@@ -2390,21 +2410,30 @@ async function saveApiKey() {
 }
 
 async function testApiKey(showSuccessAlert = true) {
-    if (!state.apiKey) {
-        showToast('ไม่พบ API Key สำหรับทดสอบ', 'error');
-        return;
-    }
+    const isUsingProxy = !state.apiKey;
     
-    showToast('กำลังทดสอบความถูกต้องของ API Key...', 'warning');
+    if (isUsingProxy) {
+        showToast('กำลังทดสอบการเชื่อมต่อคลาวด์ (Cloud Proxy)...', 'warning');
+    } else {
+        showToast('กำลังทดสอบความถูกต้องของ API Key...', 'warning');
+    }
     
     const testPrompt = "Reply with only 'Hello'";
     const res = await callGeminiAPI(testPrompt, "You are a test assistant.");
     
     if (res && res.toLowerCase().includes('hello')) {
-        showToast('API Key ใช้งานได้สมบูรณ์! ระบบตอบกลับสำเร็จครับ 🎉', 'success');
+        if (isUsingProxy) {
+            showToast('เชื่อมต่อคลาวด์สำเร็จ! ระบบตอบกลับสำเร็จครับ (Free AI พร้อมใช้งาน) 🎉', 'success');
+        } else {
+            showToast('API Key ใช้งานได้สมบูรณ์! ระบบตอบกลับสำเร็จครับ 🎉', 'success');
+        }
         updateApiStatusDisplay();
     } else {
-        showToast('API Key ไม่ถูกต้อง หรือมีปัญหากับสิทธิ์การใช้งาน กรุณาลองตรวจสอบใหม่อีกครั้งครับ', 'error');
+        if (isUsingProxy) {
+            showToast('การเชื่อมต่อคลาวด์ล้มเหลว กรุณาตรวจสอบการตั้งค่าของ Cloudflare Worker หรืออินเทอร์เน็ตครับ', 'error');
+        } else {
+            showToast('API Key ไม่ถูกต้อง หรือมีปัญหากับสิทธิ์การใช้งาน กรุณาลองตรวจสอบใหม่อีกครั้งครับ', 'error');
+        }
     }
 }
 
