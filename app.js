@@ -662,8 +662,16 @@ async function speakText(text) {
     const workerUrl = "https://engbuddy-tts.natthapon-manat.workers.dev";
     
     try {
-        // ดึงไฟล์เสียงเสียงสังเคราะห์ AI จาก Cloudflare Worker
-        const response = await fetch(`${workerUrl}?text=${encodeURIComponent(text)}`);
+        const aiSpeakers = new Set(['angus', 'asteria', 'luna', 'stella', 'athena', 'hera', 'arcas', 'orion', 'orpheus', 'zeus', 'helios']);
+        const speaker = state.audioVoice || "angus";
+        
+        // หากเลือกเสียงจำลองของเบราว์เซอร์ ให้โยน Error เพื่อใช้เบราว์เซอร์เล่นทันที
+        if (!aiSpeakers.has(speaker)) {
+            throw new Error("Local browser voice selected");
+        }
+        
+        // ดึงไฟล์เสียงเสียงสังเคราะห์ AI จาก Cloudflare Worker พร้อมระบุผู้พูด (speaker)
+        const response = await fetch(`${workerUrl}?text=${encodeURIComponent(text)}&speaker=${speaker}`);
         if (!response.ok) throw new Error("Cloudflare TTS failed");
         
         const audioBlob = await response.blob();
@@ -674,7 +682,7 @@ async function speakText(text) {
         audio.playbackRate = parseFloat(state.audioSpeed || 0.9); 
         audio.play();
     } catch (e) {
-        console.warn("AI TTS failed, falling back to Browser Web Speech API:", e);
+        console.warn("AI TTS failed or local voice selected, falling back to Browser Web Speech API:", e);
         
         // ระบบสำรอง (Fallback) หากคลาวด์ติดปัญหา ให้กลับไปใช้เสียงอ่านพื้นฐานของเบราว์เซอร์
         if ('speechSynthesis' in window) {
@@ -684,7 +692,7 @@ async function speakText(text) {
             utterance.rate = parseFloat(state.audioSpeed || 0.9);
             
             const voices = window.speechSynthesis.getVoices();
-            if (state.audioVoice) {
+            if (state.audioVoice && !['angus', 'asteria', 'luna', 'stella', 'athena', 'hera', 'arcas', 'orion', 'orpheus', 'zeus', 'helios'].includes(state.audioVoice)) {
                 const selectedVoice = voices.find(v => v.name === state.audioVoice);
                 if (selectedVoice) {
                     utterance.voice = selectedVoice;
@@ -703,30 +711,62 @@ async function speakText(text) {
     }
 }
 
-// โหลดตัวเลือกเสียงภาษาอังกฤษฟรีจากตัวเบราว์เซอร์
+// โหลดตัวเลือกเสียงภาษาอังกฤษฟรีจากตัวเบราว์เซอร์และคลาวด์
 function loadSpeechVoices() {
-    if (!('speechSynthesis' in window)) return;
-    
     const voiceSelect = document.getElementById('settings-audio-voice');
     if (!voiceSelect) return;
     
-    const voices = window.speechSynthesis.getVoices();
+    voiceSelect.innerHTML = '';
     
-    // กรองเอาเฉพาะเสียงพูดภาษาอังกฤษ
-    const englishVoices = voices.filter(v => v.lang.startsWith('en'));
+    // 1. เพิ่มตัวเลือกเสียงระดับพรีเมียมจาก Cloudflare AI
+    const CLOUDFLARE_AI_VOICES = [
+        { value: 'angus', label: '✨ AI Male: Angus (Irish - Default)' },
+        { value: 'asteria', label: '✨ AI Female: Asteria (US - แนะนำ ⭐️)' },
+        { value: 'luna', label: '✨ AI Female: Luna (US)' },
+        { value: 'stella', label: '✨ AI Female: Stella (US)' },
+        { value: 'athena', label: '✨ AI Female: Athena (UK)' },
+        { value: 'hera', label: '✨ AI Female: Hera (US)' },
+        { value: 'arcas', label: '✨ AI Male: Arcas (US)' },
+        { value: 'orion', label: '✨ AI Male: Orion (US)' },
+        { value: 'orpheus', label: '✨ AI Male: Orpheus (US)' },
+        { value: 'zeus', label: '✨ AI Male: Zeus (US)' },
+        { value: 'helios', label: '✨ AI Male: Helios (UK)' }
+    ];
     
-    voiceSelect.innerHTML = '<option value="">เสียงเริ่มต้นของระบบ (Default System Voice)</option>';
-    
-    englishVoices.forEach(voice => {
+    CLOUDFLARE_AI_VOICES.forEach(item => {
         const option = document.createElement('option');
-        option.value = voice.name;
-        option.textContent = `${voice.name} (${voice.lang})`;
+        option.value = item.value;
+        option.textContent = item.label;
         voiceSelect.appendChild(option);
     });
     
-    // โหลดค่าเดิมที่เซฟไว้ (ถ้ามี)
+    // 2. ดึงเสียงที่มีในบราวเซอร์เครื่องมาเสริม (สำหรับระบบสำรอง)
+    if ('speechSynthesis' in window) {
+        const voices = window.speechSynthesis.getVoices();
+        const englishVoices = voices.filter(v => v.lang.startsWith('en'));
+        
+        if (englishVoices.length > 0) {
+            // เพิ่มตัวแบ่งกลุ่ม
+            const separator = document.createElement('option');
+            separator.disabled = true;
+            separator.textContent = '------------------ เสียงจำลองบนเบราว์เซอร์ ------------------';
+            voiceSelect.appendChild(separator);
+            
+            englishVoices.forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice.name;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                voiceSelect.appendChild(option);
+            });
+        }
+    }
+    
+    // โหลดค่าเดิมที่เซฟไว้ (ถ้ามี) หรือใช้ค่าเริ่มต้นเป็น angus
     if (state.audioVoice) {
         voiceSelect.value = state.audioVoice;
+    } else {
+        state.audioVoice = 'angus';
+        voiceSelect.value = 'angus';
     }
 }
 
@@ -756,29 +796,25 @@ function testAudioSettings() {
     const speedVal = document.getElementById('settings-audio-speed')?.value || 0.9;
     const voiceVal = document.getElementById('settings-audio-voice')?.value || '';
     
+    // สำรองค่าความเร็วและประเภทเสียงเพื่อใช้ในการทดสอบชั่วคราว
+    const oldSpeed = state.audioSpeed;
+    const oldVoice = state.audioVoice;
+    
+    state.audioSpeed = parseFloat(speedVal);
+    state.audioVoice = voiceVal;
+    
     let voiceLabel = "Default System voice";
     if (voiceVal) {
         voiceLabel = voiceVal.split(' ')[0] || voiceVal;
     }
     
-    const testMessage = `Hello, this is a test of ${voiceLabel} voice at speed of ${speedVal}. Do you like it?`;
+    const testMessage = `Hello, this is a test of ${voiceLabel} voice. Do you like it?`;
     
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(testMessage);
-        utterance.lang = 'en-US';
-        utterance.rate = parseFloat(speedVal);
-        
-        const voices = window.speechSynthesis.getVoices();
-        if (voiceVal) {
-            const selectedVoice = voices.find(v => v.name === voiceVal);
-            if (selectedVoice) utterance.voice = selectedVoice;
-        }
-        
-        window.speechSynthesis.speak(utterance);
-    } else {
-        showToast('เบราว์เซอร์ของคุณไม่รองรับระบบเสียง', 'error');
-    }
+    speakText(testMessage).finally(() => {
+        // คืนค่าเดิมหลังจากทดสอบ
+        state.audioSpeed = oldSpeed;
+        state.audioVoice = oldVoice;
+    });
 }
 
 // ฟังก์ชันสลับการเซฟเรื่องเล่าสั้น
