@@ -658,35 +658,48 @@ function toggleSaveSentence(sentenceObj, buttonEl) {
 }
 
 // ระบบเสียงพูดจำลอง (Text-To-Speech)
-function speakText(text) {
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); // ยกเลิกค้างอันเก่า
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US';
+async function speakText(text) {
+    const workerUrl = "https://engbuddy-tts.natthapon-manat.workers.dev";
+    
+    try {
+        // ดึงไฟล์เสียงเสียงสังเคราะห์ AI จาก Cloudflare Worker
+        const response = await fetch(`${workerUrl}?text=${encodeURIComponent(text)}`);
+        if (!response.ok) throw new Error("Cloudflare TTS failed");
         
-        // กำหนดความเร็วเสียงตามระดับที่ตั้งค่าไว้
-        utterance.rate = parseFloat(state.audioSpeed || 0.9);
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
         
-        const voices = window.speechSynthesis.getVoices();
+        // ปรับระดับความเร็วเสียงตามตั้งค่าของแอป
+        audio.playbackRate = parseFloat(state.audioSpeed || 0.9); 
+        audio.play();
+    } catch (e) {
+        console.warn("AI TTS failed, falling back to Browser Web Speech API:", e);
         
-        // ถ้าตั้งค่าเสียงเฉพาะไว้ ให้ดึงเสียงนั้นมาใช้
-        if (state.audioVoice) {
-            const selectedVoice = voices.find(v => v.name === state.audioVoice);
-            if (selectedVoice) {
-                utterance.voice = selectedVoice;
+        // ระบบสำรอง (Fallback) หากคลาวด์ติดปัญหา ให้กลับไปใช้เสียงอ่านพื้นฐานของเบราว์เซอร์
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); // ยกเลิกค้างอันเก่า
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = parseFloat(state.audioSpeed || 0.9);
+            
+            const voices = window.speechSynthesis.getVoices();
+            if (state.audioVoice) {
+                const selectedVoice = voices.find(v => v.name === state.audioVoice);
+                if (selectedVoice) {
+                    utterance.voice = selectedVoice;
+                }
+            } else {
+                const defaultVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) ||
+                                     voices.find(v => v.lang.startsWith('en'));
+                if (defaultVoice) {
+                    utterance.voice = defaultVoice;
+                }
             }
+            window.speechSynthesis.speak(utterance);
         } else {
-            // ถ้าไม่ได้เลือกเสียง ให้หาเสียงภาษาอังกฤษเป็นเสียงเริ่มต้น
-            const defaultVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) ||
-                                 voices.find(v => v.lang.startsWith('en'));
-            if (defaultVoice) {
-                utterance.voice = defaultVoice;
-            }
+            console.error('Browser or device does not support Text-to-Speech');
         }
-        
-        window.speechSynthesis.speak(utterance);
-    } else {
-        showToast('เบราว์เซอร์หรืออุปกรณ์ของคุณไม่รองรับระบบเสียงพูด (Text-to-Speech)', 'error');
     }
 }
 
