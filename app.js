@@ -122,10 +122,11 @@ document.addEventListener('DOMContentLoaded', () => {
     checkDailyStreak(); // ตรวจสอบวันใช้งานต่อเนื่อง
     updateUserStatsUI(); // แสดงผลสถานะผู้ใช้
     
-    // ตรวจสอบว่ามี API Key หรือยัง ถ้าไม่มี ให้เตือนและเปิดหน้าตั้งค่า
+    // ตรวจสอบสถานะการเชื่อมต่อ API (จะทำงานผ่าน Proxy หรือ API Key ส่วนตัว)
     if (!state.apiKey) {
-        showToast('ยินดีต้อนรับสู่ EngBuddy AI! กรุณาระบุ Gemini API Key ในหน้าตั้งค่าก่อนใช้งานนะครับ', 'warning');
-        switchView('settings');
+        showToast('ยินดีต้อนรับสู่ EngBuddy AI! (กำลังทำงานในโหมดเซิร์ฟเวอร์คลาวด์)', 'info');
+    } else {
+        showToast('ยินดีต้อนรับสู่ EngBuddy AI! (เชื่อมต่อผ่าน API Key ส่วนตัวของคุณ)', 'success');
     }
     
     // เริ่มต้นตรวจสอบความสอดคล้องและการซิงค์ข้อมูลกับคลาวด์อัตโนมัติ (หลังโหลดหน้า 3 วินาที)
@@ -328,14 +329,7 @@ function showToast(message, type = 'success') {
 // 4. API ENGINE (การเชื่อมต่อระบบ AI Gemini Pro)
 // ==========================================================================
 async function callGeminiAPI(prompt, systemInstruction = '', responseJson = false) {
-    if (!state.apiKey) {
-        showToast('กรุณาระบุ API Key ในหน้าตั้งค่าก่อนใช้งานนะครับ', 'error');
-        switchView('settings');
-        return null;
-    }
-    
-    // ใช้ Gemini 3.1 Flash Lite ซึ่งมีความรวดเร็ว ไม่ติดปัญหาทราฟฟิก และเหมาะกับงาน Text
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${state.apiKey}`;
+    const workerUrl = "https://engbuddy-tts.natthapon-manat.workers.dev/gemini";
     
     const requestData = {
         contents: [{ parts: [{ text: prompt }] }]
@@ -350,11 +344,20 @@ async function callGeminiAPI(prompt, systemInstruction = '', responseJson = fals
     if (responseJson) {
         requestData.generationConfig = {
             responseMimeType: "application/json",
-            temperature: 0.2 // ลดความสุ่มเพื่อให้โครงสร้าง JSON ชัดเจนขึ้น
+            temperature: 0.2
         };
     }
     
     try {
+        let url;
+        if (state.apiKey) {
+            // หากมี API Key ส่วนตัว ให้ใช้ยิงตรงหา Google
+            url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${state.apiKey}`;
+        } else {
+            // หากไม่มี ให้ยิงผ่านระบบ Proxy ของ Cloudflare Worker ที่เก็บ Secret Key เอาไว้
+            url = workerUrl;
+        }
+
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
