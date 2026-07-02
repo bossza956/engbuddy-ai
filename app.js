@@ -2411,28 +2411,34 @@ async function saveApiKey() {
 
 async function testApiKey(showSuccessAlert = true) {
     const isUsingProxy = !state.apiKey;
+    const btn = document.getElementById('btn-settings-test-api');
+    const originalText = btn ? btn.textContent : 'ทดสอบการเชื่อมต่อ (Test)';
     
-    if (isUsingProxy) {
-        showToast('กำลังทดสอบการเชื่อมต่อคลาวด์ (Cloud Proxy)...', 'warning');
-    } else {
-        showToast('กำลังทดสอบความถูกต้องของ API Key...', 'warning');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'กำลังทดสอบ...';
     }
     
     const testPrompt = "Reply with only 'Hello'";
     const res = await callGeminiAPI(testPrompt, "You are a test assistant.");
     
+    if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+    
     if (res && res.toLowerCase().includes('hello')) {
         if (isUsingProxy) {
-            showToast('เชื่อมต่อคลาวด์สำเร็จ! ระบบตอบกลับสำเร็จครับ (Free AI พร้อมใช้งาน) 🎉', 'success');
+            alert('🟢 เชื่อมต่อคลาวด์สำเร็จ!\nระบบตอบกลับจาก Gemini สำเร็จแล้ว (Free AI พร้อมใช้งาน) 🎉');
         } else {
-            showToast('API Key ใช้งานได้สมบูรณ์! ระบบตอบกลับสำเร็จครับ 🎉', 'success');
+            alert('🟢 เชื่อมต่อสำเร็จ!\nAPI Key ของคุณถูกต้องและใช้งานได้สมบูรณ์ครับ 🎉');
         }
         updateApiStatusDisplay();
     } else {
         if (isUsingProxy) {
-            showToast('การเชื่อมต่อคลาวด์ล้มเหลว กรุณาตรวจสอบการตั้งค่าของ Cloudflare Worker หรืออินเทอร์เน็ตครับ', 'error');
+            alert('🔴 การเชื่อมต่อคลาวด์ล้มเหลว!\nกรุณาตรวจสอบว่ากรอก GEMINI_API_KEY ใน Cloudflare Worker ถูกต้องแล้วหรือยัง หรืออินเทอร์เน็ตมีปัญหาครับ');
         } else {
-            showToast('API Key ไม่ถูกต้อง หรือมีปัญหากับสิทธิ์การใช้งาน กรุณาลองตรวจสอบใหม่อีกครั้งครับ', 'error');
+            alert('🔴 การเชื่อมต่อล้มเหลว!\nAPI Key ไม่ถูกต้อง หรือมีปัญหาการสิทธิ์ใช้งาน ลองตรวจสอบใหม่อีกครั้งครับ');
         }
     }
 }
