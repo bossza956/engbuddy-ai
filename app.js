@@ -130,14 +130,16 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('ยินดีต้อนรับสู่ EngBuddy AI! (เชื่อมต่อผ่าน API Key ส่วนตัวของคุณ)', 'success');
         }
         
-        // เริ่มต้นตรวจสอบความสอดคล้องและการซิงค์ข้อมูลกับคลาวด์อัตโนมัติ (หลังโหลดหน้า 3 วินาที)
-        setTimeout(() => {
+        // ดึงข้อมูลหลักจาก Firestore ทันทีที่เปิดหน้าเว็บขึ้นมา! (ดีเลย์ 100ms เพื่อรอให้ส่วนแสดงผลพร้อม)
+        setTimeout(async () => {
             try {
-                autoSyncOnStartup();
+                updateSyncStatus("กำลังซิงค์ข้อมูลจากคลาวด์...", "normal");
+                await loadDataFromFirebase('bossza956');
             } catch(e) {
-                console.error("AutoSync error on startup:", e);
+                console.error("Initial Firestore load failed:", e);
+                updateSyncStatus("ซิงค์คลาวด์ล้มเหลว", "error");
             }
-        }, 3000);
+        }, 100);
     } catch (error) {
         console.error("System initialization crashed:", error);
         showToast("เกิดข้อผิดพลาดในการโหลดระบบ: " + error.message, "error");
@@ -220,32 +222,9 @@ function loadDataFromLocalStorage() {
     }
 }
 
-// บันทึกสถานะปัจจุบันลงเครื่องคอมพิวเตอร์
+// บันทึกสถานะปัจจุบันลงฐานข้อมูลคลาวด์ Firestore โดยตรง (แทนการเขียนลง LocalStorage)
 function saveDataToLocalStorage() {
     state.updatedAt = Date.now();
-    localStorage.setItem('engbuddy_updated_at', state.updatedAt);
-    
-    localStorage.setItem('engbuddy_user_id', state.userId);
-    localStorage.setItem('engbuddy_sentences', JSON.stringify(state.savedSentences));
-    localStorage.setItem('engbuddy_learned', JSON.stringify(state.learnedSentences));
-    localStorage.setItem('engbuddy_vocab', JSON.stringify(state.vocabBank));
-    localStorage.setItem('engbuddy_saved_stories', JSON.stringify(state.savedStories));
-    localStorage.setItem('engbuddy_audio_speed', state.audioSpeed);
-    localStorage.setItem('engbuddy_audio_voice', state.audioVoice);
-    localStorage.setItem('engbuddy_xp', state.xp);
-    localStorage.setItem('engbuddy_level', state.level);
-    localStorage.setItem('engbuddy_streak', state.streak);
-    localStorage.setItem('engbuddy_last_active', state.lastActiveDate);
-    
-    // บันทึกสถานะ Custom Reader
-    if (state.currentReader) {
-        localStorage.setItem('engbuddy_current_reader', JSON.stringify(state.currentReader));
-    } else {
-        localStorage.removeItem('engbuddy_current_reader');
-    }
-    localStorage.setItem('engbuddy_reader_read_completed', state.readerReadCompleted);
-    
-    // อัปโหลดข้อมูลคลาวด์ซิงค์ Firebase แบบ Asynchronous
     saveDataToFirebase();
 }
 
@@ -814,8 +793,7 @@ function saveAudioSettings() {
     state.audioVoice = voiceSelect.value;
     state.audioSpeed = parseFloat(speedInput.value);
     
-    localStorage.setItem('engbuddy_audio_voice', state.audioVoice);
-    localStorage.setItem('engbuddy_audio_speed', state.audioSpeed);
+    saveDataToLocalStorage(); // เซฟตรงขึ้นระบบคลาวด์
     
     showToast('บันทึกการตั้งค่าเสียงพูดเรียบร้อยแล้ว!');
 }
@@ -1114,8 +1092,6 @@ function renderSavedReadersList() {
                 if (state.currentReader && state.currentReader.id === reader.id) {
                     state.currentReader = null;
                     state.readerReadCompleted = false;
-                    localStorage.removeItem('engbuddy_current_reader');
-                    localStorage.setItem('engbuddy_reader_read_completed', 'false');
                     
                     const displaySec = document.getElementById('reader-display');
                     const placeholder = document.getElementById('reader-placeholder');
@@ -2402,7 +2378,7 @@ async function saveApiKey() {
     }
     
     state.apiKey = keyInput;
-    localStorage.setItem('engbuddy_api_key', keyInput);
+    saveDataToLocalStorage();
     updateApiStatusDisplay();
     showToast('บันทึก API Key สำเร็จแล้ว!');
     
@@ -2922,6 +2898,8 @@ async function saveDataToFirebase() {
             level: state.level || 1,
             streak: state.streak || 0,
             lastActiveDate: state.lastActiveDate || '',
+            currentReader: state.currentReader || null,
+            readerReadCompleted: state.readerReadCompleted || false,
             updatedAt: state.updatedAt || Date.now()
         };
         
@@ -2973,24 +2951,9 @@ async function loadDataFromFirebase(targetUserId) {
         state.level = parseInt(data.level) || 1;
         state.streak = parseInt(data.streak) || 0;
         state.lastActiveDate = data.lastActiveDate || '';
+        state.currentReader = data.currentReader || null;
+        state.readerReadCompleted = data.readerReadCompleted === true;
         state.updatedAt = data.updatedAt || Date.now();
-        
-        // เซฟลงเครื่อง LocalStorage ทันที
-        localStorage.setItem('engbuddy_user_id', state.userId);
-        localStorage.setItem('engbuddy_updated_at', state.updatedAt);
-        
-        // บันทึกลง LocalStorage
-        localStorage.setItem('engbuddy_api_key', state.apiKey); // บันทึกคีย์ API ที่ดึงมาจากคลาวด์
-        localStorage.setItem('engbuddy_sentences', JSON.stringify(state.savedSentences));
-        localStorage.setItem('engbuddy_learned', JSON.stringify(state.learnedSentences));
-        localStorage.setItem('engbuddy_vocab', JSON.stringify(state.vocabBank));
-        localStorage.setItem('engbuddy_saved_stories', JSON.stringify(state.savedStories));
-        localStorage.setItem('engbuddy_audio_speed', state.audioSpeed);
-        localStorage.setItem('engbuddy_audio_voice', state.audioVoice);
-        localStorage.setItem('engbuddy_xp', state.xp);
-        localStorage.setItem('engbuddy_level', state.level);
-        localStorage.setItem('engbuddy_streak', state.streak);
-        localStorage.setItem('engbuddy_last_active', state.lastActiveDate);
         
         // อัปเดต UI ทุกหน้า
         document.getElementById('settings-api-key').value = state.apiKey;
