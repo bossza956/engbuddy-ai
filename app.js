@@ -234,12 +234,17 @@ function updateApiStatusDisplay() {
     const dot = document.getElementById('status-dot');
     const text = document.getElementById('status-text');
     
+    if (!dot || !text) return;
+    
+    // เคลียร์ class เก่าให้กลับมาเป็นค่าเริ่มต้น
+    dot.className = 'status-dot';
+    
     if (state.apiKey) {
-        dot.classList.add('active');
-        text.textContent = 'เชื่อมต่อแล้ว';
+        dot.classList.add('active'); // สีเขียว
+        text.textContent = 'เชื่อมต่อแล้ว (Key)';
     } else {
-        dot.classList.remove('active');
-        text.textContent = 'ยังไม่พบ API Key';
+        dot.classList.add('proxy'); // สีฟ้า
+        text.textContent = 'เชื่อมต่อแล้ว (Cloud)';
     }
 }
 

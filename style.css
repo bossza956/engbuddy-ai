@@ -219,6 +219,11 @@ body {
     box-shadow: 0 0 8px var(--color-success);
 }
 
+.status-dot.proxy {
+    background: #00d2ff;
+    box-shadow: 0 0 8px #00d2ff;
+}
+
 /* Main Content Area */
 .main-content {
     flex-grow: 1;
